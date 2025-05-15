@@ -75,5 +75,16 @@ contextBridge.exposeInMainWorld('api', {
   onAbout: (callback) => {
     ipcRenderer.on('menu-about', callback);
     return () => ipcRenderer.removeListener('menu-about', callback);
+  },
+
+  // Uzak Sunucu Sistem Bilgisi Dinleyicileri
+  onRemoteSystemInfoUpdate: (callback) => {
+    ipcRenderer.on('remote-system-info-update', (event, value) => callback(value));
+    // Kaldırma fonksiyonunu da döndürmek iyi bir pratiktir, bileşen kaldırıldığında dinleyiciyi temizlemek için.
+    return () => ipcRenderer.removeListener('remote-system-info-update', callback);
+  },
+  onClearRemoteSystemInfo: (callback) => {
+    ipcRenderer.on('clear-remote-system-info', (event, value) => callback(value));
+    return () => ipcRenderer.removeListener('clear-remote-system-info', callback);
   }
 }); 

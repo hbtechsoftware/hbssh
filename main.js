@@ -10,6 +10,134 @@ const store = new Store();
 
 let mainWindow;
 
+// Uzak sunucu istatistikleri için interval'leri saklayacak Map
+const activeStatIntervals = new Map();
+const STAT_INTERVAL_MS = 3000; // 3 saniyede bir istatistik çek
+
+// RAM bilgisini parse etmek için yardımcı fonksiyon
+function parseRamUsage(freeOutput) {
+  try {
+    const lines = freeOutput.split('\n');
+    const memLine = lines.find(line => line.startsWith('Mem:'));
+    if (memLine) {
+      const parts = memLine.split(/\s+/);
+      // parts[0] = 'Mem:', parts[1] = total, parts[2] = used, parts[3] = free
+      const totalMem = parseInt(parts[1], 10);
+      const usedMem = parseInt(parts[2], 10);
+      if (!isNaN(totalMem) && !isNaN(usedMem) && totalMem > 0) {
+        const usagePercent = (usedMem / totalMem) * 100;
+        return { total: totalMem, used: usedMem, percent: usagePercent };
+      }
+    }
+  } catch (error) {
+    console.error('RAM parse error:', error, 'Output:', freeOutput);
+  }
+  return null;
+}
+
+// CPU bilgisini parse etmek için yardımcı fonksiyon (Linux için)
+function parseCpuUsage(topOutput) {
+  try {
+    // Örnek çıktı: '8.3' (sadece idle olmayan yüzde)
+    // Veya direkt kullanım yüzdesini alan komut sonrası: '12.7'
+    const usage = parseFloat(topOutput.trim());
+    if (!isNaN(usage)) {
+      return usage;
+    }
+  } catch (error) {
+    console.error('CPU parse error:', error, 'Output:', topOutput);
+  }
+  return null;
+}
+
+// Disk bilgisini parse etmek için yardımcı fonksiyon (Linux için)
+function parseDiskUsage(dfOutput) {
+  try {
+    // Örnek beklenen çıktı: "totalKBlocks_usedKBlocks_Percent"
+    // Örneğin: "236610660_23855872_11"
+    const parts = dfOutput.trim().split('_');
+    if (parts.length === 3) {
+      const totalKB = parseInt(parts[0], 10);
+      const usedKB = parseInt(parts[1], 10);
+      const percent = parseInt(parts[2], 10);
+      if (!isNaN(totalKB) && !isNaN(usedKB) && !isNaN(percent)) {
+        return {
+          totalMB: Math.round(totalKB / 1024),
+          usedMB: Math.round(usedKB / 1024),
+          percent: percent
+        };
+      }
+    }
+  } catch (error) {
+    console.error('Disk parse error:', error, 'Output:', dfOutput);
+  }
+  return null;
+}
+
+async function fetchAndSendRemoteStats(connectionId) {
+  if (!mainWindow || mainWindow.isDestroyed() || !SSHClient.getConnection(connectionId)) {
+    // Eğer pencere yoksa veya bağlantı artık SSHClient listesinde değilse interval'ı durdur
+    if (activeStatIntervals.has(connectionId)) {
+      clearInterval(activeStatIntervals.get(connectionId));
+      activeStatIntervals.delete(connectionId);
+      console.log(`[${connectionId}] Stats interval stopped (window/connection closed).`);
+    }
+    return;
+  }
+
+  try {
+    // RAM Bilgisi
+    const ramCommand = 'free -m';
+    const rawRamData = await SSHClient.executeCommand(connectionId, ramCommand);
+    const ramUsage = parseRamUsage(rawRamData);
+
+    // CPU Bilgisi (Linux için)
+    // Bu komut, idle olmayan (user, system, nice) CPU kullanım yüzdelerinin toplamını verir.
+    // Alternatif: const cpuCommand = "top -bn1 | grep '%Cpu(s)' | sed 's/.*,\s*\\([0-9.]*\\)%* id.*/\\1/' | awk '{print 100 - $1}'";
+    const cpuCommand = "grep 'cpu ' /proc/stat | awk '{usage=($2+$4)*100/($2+$4+$5)} END {print usage}'"
+    // Daha basit bir CPU komutu, /proc/stat okuyarak ve bir önceki değeri saklayarak daha doğru olurdu ama bu daha karmaşık.
+    // Şimdilik `top` kullanan bir komut daha basit olabilir veya server'da `vmstat` varsa o da bir seçenek.
+    // Örnek `top` komutu: (Bu komut direkt % kullanım verir)
+    const simplerCpuCommand = "top -bn1 | awk '/^%Cpu/{print $2+$4+$6}'"; // user + system + nice
+    const rawCpuData = await SSHClient.executeCommand(connectionId, simplerCpuCommand);
+    const cpuUsage = parseCpuUsage(rawCpuData);
+
+    // Disk Bilgisi (Kök dizin için)
+    const diskCommand = "df -P / | tail -n 1 | awk '{print $2 \"_\" $3 \"_\" $5}' | sed 's/%//g'";
+    const rawDiskData = await SSHClient.executeCommand(connectionId, diskCommand);
+    const diskUsage = parseDiskUsage(rawDiskData);
+
+    if (ramUsage || cpuUsage || diskUsage) {
+      // console.log(`[${connectionId}] Remote Stats: CPU ${cpuUsage !== null ? cpuUsage.toFixed(1) + '%' : 'N/A'}, RAM ${ramUsage ? ramUsage.percent.toFixed(1) + '%' : 'N/A'}`);
+      mainWindow.webContents.send('remote-system-info-update', {
+        connectionId,
+        cpu: cpuUsage,     // Yüzde olarak (null olabilir)
+        mem: ramUsage ? ramUsage.percent : null, // Yüzde olarak (null olabilir)
+        memTotalMB: ramUsage ? ramUsage.total : null,
+        memUsedMB: ramUsage ? ramUsage.used : null,
+        disk: diskUsage ? diskUsage.percent : null, // Yüzde olarak (null olabilir)
+        diskTotalMB: diskUsage ? diskUsage.totalMB : null,
+        diskUsedMB: diskUsage ? diskUsage.usedMB : null,
+      });
+    } else {
+        // console.log(`[${connectionId}] Failed to fetch or parse remote stats.`);
+    }
+
+  } catch (error) {
+    console.error(`[${connectionId}] Error fetching remote stats:`, error.message);
+    // Belirli hatalarda interval'ı durdurabiliriz, örneğin bağlantı artık yoksa.
+    // SSHClient.executeCommand zaten bağlantı yoksa reject edecektir.
+    if (error.message.includes('SSH connection not found')) {
+        if (activeStatIntervals.has(connectionId)) {
+            clearInterval(activeStatIntervals.get(connectionId));
+            activeStatIntervals.delete(connectionId);
+            console.log(`[${connectionId}] Stats interval stopped due to connection error.`);
+            mainWindow.webContents.send('clear-remote-system-info', { connectionId });
+        }
+    }
+  }
+}
+
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
@@ -148,33 +276,53 @@ ipcMain.handle('delete-connection', (event, connectionId) => {
   return updatedConnections;
 });
 
-// IPC Handlers for SSH operations
-ipcMain.handle('connect-ssh', async (event, connection) => {
+// SSH bağlantısı kurulduğunda istatistik çekmeyi başlat
+ipcMain.handle('connect-ssh', async (event, connectionConfig) => {
   try {
-    // Connect to the SSH server
-    const connectionId = await SSHClient.connect(
-      connection,
-      (data) => {
-        // Send SSH data to the renderer process
+    // connectionId değişkenini burada let ile tanımlıyoruz, çünkü onClose callback'i 
+    // await tamamlanmadan önce tanımlanacak ve o scope'a bağlanacak.
+    // Ancak SSHClient.connect'ten gelen id'yi kullanacağız.
+    let currentConnectionIdForCallbacks;
+
+    const receivedConnectionId = await SSHClient.connect(
+      connectionConfig,
+      (data) => { // onData
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ssh-data', connectionId, data);
+          mainWindow.webContents.send('ssh-data', currentConnectionIdForCallbacks, data);
         }
       },
-      (error) => {
-        // Send SSH error to the renderer process
+      (error) => { // onError
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ssh-error', connectionId, error);
+          mainWindow.webContents.send('ssh-error', currentConnectionIdForCallbacks, error);
         }
       },
-      () => {
-        // Send SSH close event to the renderer process
+      // onClose şimdi SSHClient.js'den connectionId'yi alacak
+      (closedConnectionId) => { // onClose (shell stream close)
+        // currentConnectionIdForCallbacks yerine doğrudan closedConnectionId'yi kullanalım.
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ssh-close', connectionId);
+          mainWindow.webContents.send('ssh-close', closedConnectionId);
+        }
+        // Shell kapandığında istatistik çekmeyi durdur
+        if (activeStatIntervals.has(closedConnectionId)) {
+          clearInterval(activeStatIntervals.get(closedConnectionId));
+          activeStatIntervals.delete(closedConnectionId);
+          console.log(`[${closedConnectionId}] Stats interval stopped (shell closed).`);
+          mainWindow.webContents.send('clear-remote-system-info', { connectionId: closedConnectionId });
         }
       }
     );
-    
-    return { success: true, connectionId };
+
+    // Promise çözümlendikten sonra asıl connectionId'yi atayalım
+    currentConnectionIdForCallbacks = receivedConnectionId; 
+
+    // İstatistik çekme interval'ını başlat (receivedConnectionId ile)
+    if (!activeStatIntervals.has(receivedConnectionId)) {
+      fetchAndSendRemoteStats(receivedConnectionId); // İlk çalıştırma hemen
+      const intervalId = setInterval(() => fetchAndSendRemoteStats(receivedConnectionId), STAT_INTERVAL_MS);
+      activeStatIntervals.set(receivedConnectionId, intervalId);
+      console.log(`[${receivedConnectionId}] Stats interval started.`);
+    }
+    return { success: true, connectionId: receivedConnectionId };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -200,7 +348,16 @@ ipcMain.handle('resize-ssh', (event, connectionId, cols, rows) => {
 
 ipcMain.handle('disconnect-ssh', (event, connectionId) => {
   try {
-    SSHClient.close(connectionId);
+    if (activeStatIntervals.has(connectionId)) {
+      clearInterval(activeStatIntervals.get(connectionId));
+      activeStatIntervals.delete(connectionId);
+      console.log(`[${connectionId}] Stats interval stopped (disconnect request).`);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+         mainWindow.webContents.send('clear-remote-system-info', { connectionId });
+      }
+    }
+    SSHClient.close(connectionId); // Bu, client'ın 'close' event'ini tetikleyecek
+                                   // ve SSHClient içinde this.connections'tan silinecek.
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };

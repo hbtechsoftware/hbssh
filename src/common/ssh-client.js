@@ -56,6 +56,7 @@ class SSHClient {
         // Create a new shell session
         conn.shell((err, stream) => {
           if (err) {
+            delete this.connections[connectionId];
             reject(new Error(`Failed to create shell: ${err.message}`));
             return;
           }
@@ -76,12 +77,11 @@ class SSHClient {
           });
           
           stream.on('close', () => {
-            delete this.connections[connectionId];
-            if (onClose) onClose();
+            if (onClose) onClose(connectionId);
           });
           
-          stream.on('error', (err) => {
-            if (onError) onError(err.message);
+          stream.on('error', (errStream) => {
+            if (onError) onError(errStream.message);
           });
           
           // Resolve with the connection ID
@@ -89,12 +89,49 @@ class SSHClient {
         });
       });
       
-      conn.on('error', (err) => {
-        reject(new Error(`Connection error: ${err.message}`));
+      conn.on('error', (errClient) => {
+        delete this.connections[connectionId];
+        reject(new Error(`Connection error: ${errClient.message}`));
+      });
+
+      conn.on('close', () => {
+        delete this.connections[connectionId];
+        if (this.activeConnectionId === connectionId) {
+          this.activeConnectionId = null;
+        }
       });
       
       // Connect to the server
       conn.connect(connectionConfig);
+    });
+  }
+
+  /**
+   * Execute a command on an SSH connection and get its output
+   * @param {string} connectionId - Connection ID
+   * @param {string} command - Command to execute
+   * @returns {Promise<string>} Command output
+   */
+  executeCommand(connectionId, command) {
+    return new Promise((resolve, reject) => {
+      const connection = this.connections[connectionId];
+      if (!connection || !connection.client) {
+        return reject(new Error('SSH connection not found or client not available.'));
+      }
+
+      let output = '';
+      connection.client.exec(command, (err, stream) => {
+        if (err) {
+          return reject(err);
+        }
+        stream.on('data', (data) => {
+          output += data.toString('utf8');
+        }).on('close', (code, signal) => {
+          resolve(output);
+        }).on('error', (execError) => {
+            reject(execError);
+        });
+      });
     });
   }
   
@@ -121,7 +158,6 @@ class SSHClient {
         connection.stream.end();
       }
       connection.client.end();
-      delete this.connections[connectionId];
     }
   }
   
