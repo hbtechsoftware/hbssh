@@ -330,26 +330,19 @@ ipcMain.handle('connect-ssh', async (event, connectionConfig) => {
       const sftpConnectionId = await SFTPClient.connect(sftpConfig);
       console.log(`[${currentSshConnectionId}] SFTP connected with ID: ${sftpConnectionId}`);
       
-      // Başlangıç dizinini al (genellikle kullanıcının ev dizini)
-      // SFTPClient.js'de bir `pwd` veya `getHomeDirectory` metodu olmalı ya da eklenebilir.
-      // Şimdilik varsayılan olarak '/' veya kullanıcı adından türetilmiş bir yol kullanılabilir.
-      // En basit haliyle, SFTPClient.list(sftpConnectionId, '.') ile başlanabilir, bu genellikle ev dizinini verir.
+      // Başlangıç dizinini PWD komutu ile al
       let initialPath = '/'; // Varsayılan
       try {
-        // SFTPClient'in `list` metodu genellikle göreceli yolları da destekler.
-        // Home dizinini almak için basit bir yol: '.' listelemek ve ilk gerçek dizini almak ya da doğrudan pwd benzeri bir komut çalıştırmak.
-        // SFTPClient'da `pwd()` gibi bir metod yoksa, bunu eklemek daha iyi olur.
-        // Şimdilik `.` ile başlıyoruz, SFTP sunucuları genellikle bunu ev dizini olarak yorumlar.
-        const homeDirTest = await SFTPClient.list(sftpConnectionId, '.');
-        if (homeDirTest && homeDirTest.success) {
-            // `list` direkt path dönmüyor, bu yüzden `.` kullanmak ve renderer'da path'i oluşturmak daha mantıklı.
-            initialPath = '.'; // Renderer bu '.'yı uygun şekilde yorumlayacak (veya sunucu home dir'e yönlendirecek)
-            // Alternatif olarak, SFTPClient'a bir getHomeDir() metodu eklenebilir.
+        const pwdOutput = await SSHClient.executeCommand(currentSshConnectionId, 'pwd');
+        if (pwdOutput) {
+          initialPath = pwdOutput.trim(); // Satır sonu karakterlerini temizle
+          console.log(`[${currentSshConnectionId}] Initial SFTP path from pwd: ${initialPath}`);
         } else {
-            console.warn(`[${sftpConnectionId}] Could not determine initial SFTP path, using '/'.`);
+          console.warn(`[${currentSshConnectionId}] pwd command returned empty, using default SFTP path '/'.`);
         }
-      } catch (pathError) {
-        console.warn(`[${sftpConnectionId}] Error determining initial SFTP path, using '/':`, pathError.message);
+      } catch (pwdError) {
+        console.warn(`[${currentSshConnectionId}] Error executing pwd to get initial SFTP path, using '/':`, pwdError.message);
+        // PWD hatası durumunda SFTP bağlantısını sonlandırmaya gerek yok, varsayılan ile devam edilebilir.
       }
 
       if (mainWindow && !mainWindow.isDestroyed()) {

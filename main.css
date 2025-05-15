@@ -1,0 +1,28 @@
+.sftp-panel {
+    width: 300px; /* Genişlik ayarı, gerektiğinde değiştirilebilir */
+    min-width: 250px;
+    max-width: 50%; /* Ekranın en fazla yarısını kaplar */
+    border-left: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    /* overflow-y: auto; */ /* Kaldırıldı, ul#sftp-file-list kaydırmayı yönetecek */
+    box-sizing: border-box; /* Padding ve border'ın toplam yüksekliğe dahil edilmesini sağlar */
+    background-color: #2c2c2c;
+    padding: 10px; /* Panelin iç boşluğu */
+    color: #ccc;
+    /* flex-grow: 1; Eğer ana içerik alanında terminal ile yan yana ise bu gerekebilir */
+    height: 100%; /* Ebeveyn kapsayıcısının yüksekliğini alması için eklendi */
+}
+
+#sftp-file-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto; /* Dikey kaydırma gerektiğinde gösterilir */
+    flex-grow: 1; /* Kapsayıcıda kalan dikey alanı doldurur */
+    /* Aşağıdaki satır, listenin altındaki status bar ile çakışmaması için eklenebilir,
+       ancak ideal olan, ana layout'un status bar için boşluk bırakmasıdır.
+       Şimdilik bunu eklemeden deneyelim, eğer hala sorun varsa bunu veya benzerini düşünebiliriz.
+    */
+    /* padding-bottom: 40px; */ /* Durum çubuğu yüksekliği kadar veya biraz daha fazla */
+} 

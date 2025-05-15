@@ -57,6 +57,13 @@
             <button id="sftpUpButton" title="Yukarı Git">⬆️</button>
             <input type="text" id="sftpCurrentPath" readonly placeholder="/"/>
           </div>
+          <div class="sftp-actions">
+            <button id="sftpUploadBtn" class="sftp-action-btn" title="Dosya(ları) Yükle">⬆️ Yükle</button>
+            <button id="sftpDownloadBtn" class="sftp-action-btn" title="Seçili Dosyayı İndir">⬇️ İndir</button>
+            <button id="sftpDeleteBtn" class="sftp-action-btn" title="Seçili Dosya/Klasörü Sil">🗑️ Sil</button>
+            <button id="sftpNewFileBtn" class="sftp-action-btn" title="Yeni Dosya Oluştur">📄+ Yeni Dosya</button>
+            <button id="sftpNewFolderBtn" class="sftp-action-btn" title="Yeni Klasör Oluştur">📁+ Yeni Klasör</button>
+          </div>
           <ul id="sftpFileList" class="sftp-list">
             <!-- File and folder items will be listed here -->
           </ul>

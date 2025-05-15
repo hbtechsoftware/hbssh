@@ -41,6 +41,28 @@ export class TerminalManager {
    * @param {KeyboardEvent} event - Keyboard event
    */
   handleKeyboardEvent(event) {
+    const activeElement = document.activeElement;
+    const isInputFocused = activeElement && 
+                           (activeElement.tagName === 'INPUT' || 
+                            activeElement.tagName === 'TEXTAREA' || 
+                            activeElement.tagName === 'SELECT' || 
+                            activeElement.isContentEditable);
+
+    // Eğer bir input/textarea/select alanı odaktaysa (modaldeki inputlar gibi)
+    // veya contentEditable bir element odaktaysa,
+    // terminalin kopyala/yapıştır kısayollarını bu olay için pas geç,
+    // tarayıcının veya elementin kendi varsayılan davranışına izin ver.
+    if (isInputFocused) {
+      // Eğer kopyalama (Ctrl/Cmd+C) ise ve event.target bir input/textarea ise
+      // ve içinde bir seçim varsa, varsayılan kopyalamaya izin vermek için bir şey yapma.
+      // Eğer yapıştırma (Ctrl/Cmd+V) ise, varsayılan yapıştırmaya izin vermek için bir şey yapma.
+      // Diğer terminale özel kısayollar burada return ile engellenebilir.
+      // Şimdilik sadece kopyala/yapıştırı ele alıyoruz.
+      if ((event.ctrlKey || event.metaKey) && (event.key === 'c' || event.key === 'v')) {
+        return; // Varsayılan tarayıcı davranışına izin ver
+      }
+    }
+
     // Only process if we have an active terminal
     if (!this.activeTerminalId) return;
     
@@ -52,14 +74,16 @@ export class TerminalManager {
     if ((event.ctrlKey || event.metaKey) && event.key === 'c') {
       // Check if there is a selection in the terminal
       if (terminalInstance.terminal.hasSelection()) {
-        event.preventDefault();
+        event.preventDefault(); // Terminalden kopyalıyorsak varsayılanı engelle
         this.copySelectedText();
       }
+      // Seçim yoksa ve input odaklı değilse, bir şey yapma, varsayılan (OS) çalışabilir.
     }
     
     // Check for paste (Ctrl+V, Cmd+V)
+    // isInputFocused durumu yukarıda ele alındığı için buraya sadece terminale yapıştırma kalır.
     if ((event.ctrlKey || event.metaKey) && event.key === 'v') {
-      event.preventDefault();
+      event.preventDefault(); // Terminale yapıştırıyorsak varsayılanı engelle
       this.pasteText();
     }
   }

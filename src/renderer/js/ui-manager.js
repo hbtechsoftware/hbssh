@@ -37,7 +37,6 @@ export class UIManager {
     this.handleConnectionClick = this.handleConnectionClick.bind(this);
     this.updateConnectionsList = this.updateConnectionsList.bind(this);
     this.handleBrowseForKey = this.handleBrowseForKey.bind(this);
-    this.handleFileBrowserMenu = this.handleFileBrowserMenu.bind(this);
   }
   
   /**
@@ -61,167 +60,8 @@ export class UIManager {
     
     // Subscribe to connection manager events
     this.connectionManager.onConnectionsUpdated(this.updateConnectionsList);
-    
-    // Create SFTP toolbar button
-    this.createSFTPButton();
   }
 
-  /**
-   * Create SFTP toolbar button
-   */
-  createSFTPButton() {
-    const toolbar = document.getElementById('appToolbar');
-    if (!toolbar) return;
-    
-    // Clear any existing SFTP button
-    const existingButton = document.getElementById('fileBrowserBtn');
-    if (existingButton) {
-      existingButton.remove();
-    }
-    
-    // Create new SFTP button
-    const fileBrowserBtn = document.createElement('button');
-    fileBrowserBtn.id = 'fileBrowserBtn';
-    fileBrowserBtn.className = 'toolbar-button';
-    fileBrowserBtn.title = 'Open SFTP File Browser';
-    fileBrowserBtn.innerHTML = '📂 FTP';
-    fileBrowserBtn.addEventListener('click', this.handleFileBrowserMenu);
-    
-    // Add to toolbar
-    toolbar.appendChild(fileBrowserBtn);
-  }
-
-  /**
-   * Handle file browser menu click
-   * @param {Event} event - Click event
-   */
-  handleFileBrowserMenu(event) {
-    // Get the active terminal
-    const activeTerminal = this.terminalManager.getActiveTerminal();
-    if (!activeTerminal || !activeTerminal.connection) {
-      window.api.showMessage({
-        type: 'info',
-        title: 'SFTP Browser',
-        message: 'Please connect to an SSH server first.'
-      });
-      return;
-    }
-    
-    // Create a new tab with SFTP browser
-    const connection = activeTerminal.connection;
-    const tabName = `SFTP: ${connection.name}`;
-    
-    // Create tab content with split view
-    const tabContent = document.createElement('div');
-    tabContent.className = 'split-view';
-    
-    // Terminal side
-    const terminalContainer = document.createElement('div');
-    terminalContainer.className = 'split-view-left';
-    const terminalElement = document.createElement('div');
-    terminalElement.className = 'terminal-container';
-    terminalElement.id = 'terminal-sftp-' + Date.now();
-    terminalContainer.appendChild(terminalElement);
-    
-    // Split handle
-    const splitHandle = document.createElement('div');
-    splitHandle.className = 'split-handle';
-    
-    // File browser side
-    const fileBrowserContainer = document.createElement('div');
-    fileBrowserContainer.className = 'split-view-right file-browser';
-    fileBrowserContainer.id = 'file-browser-' + Date.now();
-    
-    // Add all elements to tab content
-    tabContent.appendChild(terminalContainer);
-    tabContent.appendChild(splitHandle);
-    tabContent.appendChild(fileBrowserContainer);
-    
-    // Create the tab
-    const tabId = this.tabManager.createCustomTab(tabName, tabContent);
-    
-    // Initialize terminal in the tab
-    this.terminalManager.createTerminal(connection, 'sftp-' + Date.now());
-    
-    // Initialize file browser
-    import('./file-browser.js').then(module => {
-      const FileBrowser = module.FileBrowser;
-      const fileBrowser = new FileBrowser(this.sftpManager);
-      fileBrowser.init(fileBrowserContainer);
-      
-      // Connect to SFTP server
-      fileBrowser.connect(connection)
-        .catch(error => {
-          window.api.showMessage({
-            type: 'error',
-            title: 'SFTP Connection Error',
-            message: error.message
-          });
-        });
-      
-      // Set up resizable split view
-      let isResizing = false;
-      let startX = 0;
-      let startLeftWidth = 0;
-      
-      splitHandle.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        startX = e.clientX;
-        startLeftWidth = terminalContainer.offsetWidth;
-        
-        // Add event listeners
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', () => {
-          isResizing = false;
-          document.removeEventListener('mousemove', handleMouseMove);
-          
-          // Resize terminal after resize is complete
-          const activeTermId = this.terminalManager.activeTerminalId;
-          if (activeTermId) {
-            this.terminalManager.fitTerminal(activeTermId);
-          }
-        });
-      });
-      
-      const handleMouseMove = (e) => {
-        if (!isResizing) return;
-        
-        const deltaX = e.clientX - startX;
-        const newLeftWidth = Math.max(100, Math.min(startLeftWidth + deltaX, tabContent.offsetWidth - 100));
-        const leftPercent = (newLeftWidth / tabContent.offsetWidth) * 100;
-        
-        terminalContainer.style.width = `${leftPercent}%`;
-        fileBrowserContainer.style.width = `${100 - leftPercent}%`;
-      };
-    });
-  }
-
-  /**
-   * Handle browse for private key file
-   */
-  async handleBrowseForKey() {
-    try {
-      // Use the main process to open a file dialog
-      const result = await window.api.openFileDialog({
-        title: 'Select Private Key File',
-        defaultPath: window.api.getHomePath(),
-        buttonLabel: 'Select Key',
-        filters: [
-          { name: 'Key Files', extensions: ['pem', 'key', 'ppk', 'pub'] },
-          { name: 'All Files', extensions: ['*'] }
-        ],
-        properties: ['openFile']
-      });
-
-      if (!result.canceled && result.filePaths.length > 0) {
-        // Set the private key path input
-        document.getElementById('privateKeyPath').value = result.filePaths[0];
-      }
-    } catch (error) {
-      console.error('Failed to open file dialog:', error);
-    }
-  }
-  
   /**
    * Show the connection modal
    * @param {Object} existingConnection - Optional existing connection to edit
@@ -510,5 +350,31 @@ export class UIManager {
       // Add to the list
       this.connectionsList.appendChild(connectionItem);
     });
+  }
+
+  /**
+   * Handle browse for private key file
+   */
+  async handleBrowseForKey() {
+    try {
+      // Use the main process to open a file dialog
+      const result = await window.api.openFileDialog({
+        title: 'Select Private Key File',
+        defaultPath: window.api.getHomePath(),
+        buttonLabel: 'Select Key',
+        filters: [
+          { name: 'Key Files', extensions: ['pem', 'key', 'ppk', 'pub'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (!result.canceled && result.filePaths.length > 0) {
+        // Set the private key path input
+        document.getElementById('privateKeyPath').value = result.filePaths[0];
+      }
+    } catch (error) {
+      console.error('Failed to open file dialog:', error);
+    }
   }
 } 
