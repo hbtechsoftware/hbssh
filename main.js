@@ -497,38 +497,59 @@ ipcMain.handle('sftp-list', async (event, connectionId, remotePath) => {
   }
 });
 
-ipcMain.handle('sftp-mkdir', async (event, connectionId, remotePath) => {
+ipcMain.handle('sftp-mkdir', async (event, { connectionId, remotePath, sshConnectionId }) => {
   try {
-    await SFTPClient.mkdir(connectionId, remotePath);
+    if (!sshConnectionId) {
+      throw new Error('SSH connection ID is required for sudo mkdir.');
+    }
+    console.log(`[${sshConnectionId}] Executing sudo mkdir for: ${remotePath}`);
+    const command = `/bin/sh -c "sudo mkdir -p '${remotePath.replace(/'/g, "'\''")}'"`;
+    await SSHClient.executeCommand(sshConnectionId, command);
     return { success: true };
   } catch (error) {
+    console.error(`[${sshConnectionId || connectionId}] SFTP sudo mkdir error for ${remotePath}:`, error);
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('sftp-delete', async (event, connectionId, remotePath) => {
+ipcMain.handle('sftp-delete', async (event, { sftpConnectionId, remotePath, sshConnectionId }) => {
   try {
-    await SFTPClient.delete(connectionId, remotePath);
+    if (!sshConnectionId) {
+      throw new Error('SSH connection ID is required for sudo delete.');
+    }
+    console.log(`[${sshConnectionId}] Executing sudo rm -f for: ${remotePath}`);
+    const command = `/bin/sh -c "sudo rm -f '${remotePath.replace(/'/g, "'\''")}'"`;
+    await SSHClient.executeCommand(sshConnectionId, command);
     return { success: true };
   } catch (error) {
+    console.error(`[${sshConnectionId || sftpConnectionId}] SFTP sudo delete error for ${remotePath}:`, error);
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('sftp-rmdir', async (event, connectionId, remotePath, recursive) => {
+ipcMain.handle('sftp-rmdir', async (event, { sftpConnectionId, remotePath, recursive, sshConnectionId }) => {
   try {
-    await SFTPClient.rmdir(connectionId, remotePath, recursive);
+    if (!sshConnectionId) {
+      throw new Error('SSH connection ID is required for sudo rmdir.');
+    }
+    console.log(`[${sshConnectionId}] Executing sudo rm -rf for: ${remotePath}`);
+    const command = `/bin/sh -c "sudo rm -rf '${remotePath.replace(/'/g, "'\''")}'"`;
+    await SSHClient.executeCommand(sshConnectionId, command);
     return { success: true };
   } catch (error) {
+    console.error(`[${sshConnectionId || sftpConnectionId}] SFTP sudo rmdir error for ${remotePath}:`, error);
     return { success: false, error: error.message };
   }
 });
 
-ipcMain.handle('sftp-rename', async (event, connectionId, fromPath, toPath) => {
+ipcMain.handle('sftp-rename', async (event, { connectionId, fromPath, toPath, sshConnectionId }) => {
   try {
+    // sshConnectionId loglama veya gelecekteki sudo mv için kullanılabilir.
+    console.log(`[${sshConnectionId || connectionId}] Renaming (standard SFTP) from '${fromPath}' to '${toPath}'`);
     await SFTPClient.rename(connectionId, fromPath, toPath);
     return { success: true };
   } catch (error) {
+    console.error(`[${sshConnectionId || connectionId}] SFTP rename error from ${fromPath} to ${toPath}:`, error);
     return { success: false, error: error.message };
   }
 });
@@ -599,12 +620,13 @@ ipcMain.handle('sftp-read-file', async (event, { connectionId, remoteFilePath })
   }
 });
 
-ipcMain.handle('sftp-write-file', async (event, { connectionId, remoteFilePath, content }) => {
+ipcMain.handle('sftp-write-file', async (event, { connectionId, remoteFilePath, content, sshConnectionId }) => {
   try {
+    console.log(`[${sshConnectionId || connectionId}] Writing file (standard SFTP): ${remoteFilePath}`);
     await SFTPClient.writeFile(connectionId, remoteFilePath, content);
     return { success: true };
   } catch (error) {
-    console.error(`[${connectionId}] Error writing remote file ${remoteFilePath}:`, error);
+    console.error(`[${sshConnectionId || connectionId}] Error writing remote file ${remoteFilePath}:`, error);
     return { success: false, error: error.message };
   }
 }); 

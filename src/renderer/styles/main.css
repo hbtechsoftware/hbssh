@@ -350,11 +350,12 @@ input, select {
   color: var(--text-muted);
 }
 
-/* SFTP Tarayıcı Stilleri */
 .content-area-wrapper {
   display: flex;
   flex-grow: 1;
   overflow: hidden;
+  padding-bottom: 25px;
+  box-sizing: border-box;
 }
 
 .terminal-container {
@@ -450,6 +451,21 @@ input, select {
   width: 20px;
 }
 
+/* SFTP Yeniden Adlandırma Input Stili - Eklendi */
+.sftp-list li input.sftp-rename-input {
+  flex-grow: 1; /* Kalan alanı kaplaması için */
+  padding: 2px 4px;
+  margin-left: 0; /* İkon ile aynı hizada başlaması için, eğer flex gap varsa bu gerekmeyebilir */
+  border: 1px solid var(--primary-color); /* Odaklandığını belirtmek için */
+  background-color: #f0f0f0; /* Açık renk bir arka plan */
+  color: #1e1e1e; /* Koyu renk metin */
+  font-size: inherit; /* Liste öğesiyle aynı font boyutu */
+  font-family: inherit; /* Liste öğesiyle aynı font ailesi */
+  outline: none;
+  height: auto; /* Satır yüksekliğine uyum sağlasın */
+  box-sizing: border-box; /* Padding ve border içeriğe dahil edilsin */
+}
+
 .sftp-loading {
   padding: 10px;
   text-align: center;
@@ -488,6 +504,33 @@ input, select {
   color: #777;
   cursor: not-allowed;
   border-color: #484848;
+}
+
+/* SFTP Sağ Tıklama Menüsü Stilleri - Eklendi */
+.sftp-context-menu {
+  background-color: #3e3e3e; /* Koyu tema için uygun bir arka plan */
+  border: 1px solid #555;
+  border-radius: 4px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  padding: 5px 0; /* Butonlar için iç boşluk */
+  z-index: 1000; /* Diğer öğelerin üzerinde görünmesi için */
+  min-width: 150px; /* Minimum genişlik */
+}
+
+.sftp-context-menu button {
+  background: none;
+  border: none;
+  color: #ccc; /* Açık renk metin */
+  padding: 8px 15px; /* Buton iç boşluğu */
+  text-align: left;
+  width: 100%;
+  cursor: pointer;
+  display: block; /* Butonların tam genişlikte olmasını sağlar */
+}
+
+.sftp-context-menu button:hover {
+  background-color: #555; /* Üzerine gelince arka plan rengi */
+  color: #fff;
 }
 
 /* File Editor Modal Stilleri */
