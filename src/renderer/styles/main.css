@@ -348,4 +348,104 @@ input, select {
 
 .close-modal:hover {
   color: var(--text-muted);
+}
+
+/* SFTP Tarayıcı Stilleri */
+.content-area-wrapper {
+  display: flex;
+  flex-grow: 1;
+  overflow: hidden;
+}
+
+.terminal-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.sftp-browser-container {
+  width: 280px;
+  border-left: 1px solid #444;
+  display: flex;
+  flex-direction: column;
+  background-color: #2e2e2e;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.sftp-header, .sftp-navigation {
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sftp-header {
+  border-bottom: 1px solid #444;
+  margin-bottom: 5px;
+}
+
+#sftpConnectionStatus {
+  font-size: 0.9em;
+  flex-grow: 1;
+}
+
+#sftpCurrentPath {
+  flex-grow: 1;
+  background-color: #3a3a3a;
+  color: #ccc;
+  border: 1px solid #555;
+  padding: 4px 6px;
+  font-size: 0.85em;
+  border-radius: 3px;
+}
+
+#sftpUpButton {
+  background: none;
+  border: 1px solid #555;
+  color: white;
+  padding: 4px 8px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+#sftpUpButton:hover {
+  background-color: #444;
+}
+
+.sftp-list {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+.sftp-list li {
+  padding: 6px 8px;
+  cursor: pointer;
+  border-bottom: 1px dotted #404040;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+}
+
+.sftp-list li:hover {
+  background-color: #3a3a3a;
+}
+
+.sftp-list li:last-child {
+  border-bottom: none;
+}
+
+.sftp-list .icon {
+  display: inline-block;
+  width: 20px;
+}
+
+.sftp-loading {
+  padding: 10px;
+  text-align: center;
+  color: #888;
 } 

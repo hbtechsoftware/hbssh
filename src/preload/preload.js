@@ -86,5 +86,15 @@ contextBridge.exposeInMainWorld('api', {
   onClearRemoteSystemInfo: (callback) => {
     ipcRenderer.on('clear-remote-system-info', (event, value) => callback(value));
     return () => ipcRenderer.removeListener('clear-remote-system-info', callback);
+  },
+
+  // SFTP Tarayıcı için olay dinleyicileri
+  onSftpReady: (callback) => {
+    ipcRenderer.on('sftp-ready', (event, data) => callback(data));
+    return () => ipcRenderer.removeListener('sftp-ready', callback);
+  },
+  onSftpClose: (callback) => {
+    ipcRenderer.on('sftp-close', (event, data) => callback(data));
+    return () => ipcRenderer.removeListener('sftp-close', callback);
   }
 }); 

@@ -26,7 +26,7 @@
     <!-- Main content area -->
     <div class="main-content">
       <!-- Tabs container -->
-      <div class="tabs-container">
+      <div class="tabs-container" id="tabsContainer">
         <div class="tabs" id="tabs">
           <!-- Tabs will be added here dynamically -->
         </div>
@@ -38,12 +38,29 @@
         <!-- Toolbar buttons will be added here -->
       </div>
       
-      <!-- Terminal/content container -->
-      <div class="terminal-container" id="terminalContainer">
-        <!-- Terminal instances will be created here -->
-        <div class="welcome-screen" id="welcomeScreen">
-          <h1>Welcome to HBSSH</h1>
-          <p>Select a saved connection or create a new one to get started.</p>
+      <!-- Content Area Wrapper (for terminal and SFTP browser) -->
+      <div class="content-area-wrapper">
+        <div class="terminal-container" id="terminalContainer">
+          <div class="welcome-screen" id="welcomeScreen">
+            <h1>Welcome to HBSSH</h1>
+            <p>Select a saved connection or create a new one to get started.</p>
+          </div>
+          <!-- Terminal instances will be created here -->
+        </div>
+
+        <div class="sftp-browser-container" id="sftpBrowserContainer">
+          <div class="sftp-header">
+            <span id="sftpConnectionStatus">SFTP: Bağlı Değil</span>
+            <!-- <button id="sftpConnectBtn" class="btn btn-sm">SFTP Bağlan</button> -->
+          </div>
+          <div class="sftp-navigation">
+            <button id="sftpUpButton" title="Yukarı Git">⬆️</button>
+            <input type="text" id="sftpCurrentPath" readonly placeholder="/"/>
+          </div>
+          <ul id="sftpFileList" class="sftp-list">
+            <!-- File and folder items will be listed here -->
+          </ul>
+          <div id="sftpLoadingIndicator" class="sftp-loading" style="display: none;">Yükleniyor...</div>
         </div>
       </div>
     </div>
@@ -122,6 +139,7 @@
 
   <script type="module" src="./js/app.js"></script>
   <script src="./js/status-bar.js"></script>
+  <script type="module" src="./js/sftp-browser.js"></script>
 
   <div id="statusBar" style="position: fixed; bottom: 0; left: 0; width: 100%; background-color: #333; color: white; padding: 5px 10px; font-size: 0.8em; display: flex; justify-content: space-around; z-index: 1000;">
     <span id="cpuUsage">💻 CPU: N/A</span>

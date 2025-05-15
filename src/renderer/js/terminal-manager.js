@@ -380,18 +380,25 @@ export class TerminalManager {
    */
   getTerminalDimensions(id) {
     const terminalInstance = this.terminals[id];
-    if (!terminalInstance || !terminalInstance.fitAddon) return null;
-    
-    try {
-      const dimensions = terminalInstance.terminal.dimensions;
-      return {
-        cols: dimensions.cols,
-        rows: dimensions.rows
-      };
-    } catch (error) {
-      console.error('Failed to get terminal dimensions:', error);
-      return null;
+    if (!terminalInstance) {
+      console.error(`[${id}] TerminalManager: Terminal instance for ID '${id}' not found when trying to get dimensions. Returning default.`);
+      return { cols: 80, rows: 24 }; 
     }
+    if (!terminalInstance.terminal) {
+      console.error(`[${id}] TerminalManager: Xterm.js instance not found in terminalInstance for dimension calculation. Returning default.`);
+      return { cols: 80, rows: 24 };
+    }
+    
+    if (typeof terminalInstance.terminal.cols === 'undefined' || typeof terminalInstance.terminal.rows === 'undefined') {
+      console.warn(`[${id}] TerminalManager: Xterm.js cols/rows are undefined. Terminal might not be fully initialized or visible. Using default dimensions.`);
+      // Bu genellikle terminal.open() çağrılmadan veya terminal görünür olmadan önce olur.
+      // Veya fitAddon henüz düzgün çalışmamış olabilir.
+      return { cols: 80, rows: 24 }; 
+    }
+    return {
+      cols: terminalInstance.terminal.cols,
+      rows: terminalInstance.terminal.rows,
+    };
   }
   
   /**

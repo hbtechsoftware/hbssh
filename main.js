@@ -276,53 +276,128 @@ ipcMain.handle('delete-connection', (event, connectionId) => {
   return updatedConnections;
 });
 
-// SSH bağlantısı kurulduğunda istatistik çekmeyi başlat
+// SSH bağlantısı kurulduğunda istatistik çekmeyi ve SFTP bağlamayı başlat
 ipcMain.handle('connect-ssh', async (event, connectionConfig) => {
+  let currentSshConnectionId; // Bu scope'ta tanımlayalım
   try {
-    // connectionId değişkenini burada let ile tanımlıyoruz, çünkü onClose callback'i 
-    // await tamamlanmadan önce tanımlanacak ve o scope'a bağlanacak.
-    // Ancak SSHClient.connect'ten gelen id'yi kullanacağız.
-    let currentConnectionIdForCallbacks;
-
-    const receivedConnectionId = await SSHClient.connect(
+    currentSshConnectionId = await SSHClient.connect(
       connectionConfig,
       (data) => { // onData
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ssh-data', currentConnectionIdForCallbacks, data);
+        if (mainWindow && !mainWindow.isDestroyed() && currentSshConnectionId) {
+          mainWindow.webContents.send('ssh-data', currentSshConnectionId, data);
         }
       },
       (error) => { // onError
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('ssh-error', currentConnectionIdForCallbacks, error);
+        if (mainWindow && !mainWindow.isDestroyed() && currentSshConnectionId) {
+          mainWindow.webContents.send('ssh-error', currentSshConnectionId, error);
         }
       },
-      // onClose şimdi SSHClient.js'den connectionId'yi alacak
       (closedConnectionId) => { // onClose (shell stream close)
-        // currentConnectionIdForCallbacks yerine doğrudan closedConnectionId'yi kullanalım.
         if (mainWindow && !mainWindow.isDestroyed()) {
           mainWindow.webContents.send('ssh-close', closedConnectionId);
         }
-        // Shell kapandığında istatistik çekmeyi durdur
         if (activeStatIntervals.has(closedConnectionId)) {
           clearInterval(activeStatIntervals.get(closedConnectionId));
           activeStatIntervals.delete(closedConnectionId);
           console.log(`[${closedConnectionId}] Stats interval stopped (shell closed).`);
           mainWindow.webContents.send('clear-remote-system-info', { connectionId: closedConnectionId });
         }
+        // SFTP'yi de kapatma olayı gönderelim (eğer açıksa)
+        // Bu, SFTPClient kendi bağlantılarını yönettiği için daha karmaşık olabilir,
+        // Şimdilik sadece ssh ID'sini gönderiyoruz, renderer tarafı kendi sftp ID'sini biliyorsa işlem yapar.
+        if (mainWindow && !mainWindow.isDestroyed()) {
+            mainWindow.webContents.send('sftp-close', { sshConnectionId: closedConnectionId, reason: 'ssh_shell_closed' });
+        }
       }
     );
 
-    // Promise çözümlendikten sonra asıl connectionId'yi atayalım
-    currentConnectionIdForCallbacks = receivedConnectionId; 
-
-    // İstatistik çekme interval'ını başlat (receivedConnectionId ile)
-    if (!activeStatIntervals.has(receivedConnectionId)) {
-      fetchAndSendRemoteStats(receivedConnectionId); // İlk çalıştırma hemen
-      const intervalId = setInterval(() => fetchAndSendRemoteStats(receivedConnectionId), STAT_INTERVAL_MS);
-      activeStatIntervals.set(receivedConnectionId, intervalId);
-      console.log(`[${receivedConnectionId}] Stats interval started.`);
+    // İstatistik çekme interval'ını başlat
+    if (!activeStatIntervals.has(currentSshConnectionId)) {
+      fetchAndSendRemoteStats(currentSshConnectionId); 
+      const intervalId = setInterval(() => fetchAndSendRemoteStats(currentSshConnectionId), STAT_INTERVAL_MS);
+      activeStatIntervals.set(currentSshConnectionId, intervalId);
+      console.log(`[${currentSshConnectionId}] Stats interval started.`);
     }
-    return { success: true, connectionId: receivedConnectionId };
+
+    // SSH bağlantısı başarılı, şimdi SFTP bağlamayı dene
+    try {
+      console.log(`[${currentSshConnectionId}] Attempting to connect SFTP...`);
+      // SFTPClient'ın connect metodu SSHClient'ın config objesine benzer bir config bekler.
+      // Gerekirse connectionConfig'i SFTPClient için uyarlayın.
+      const sftpConfig = { ...connectionConfig, // host, port, username, password, privateKeyPath, passphrase
+        // SFTP'ye özel ek ayarlar buraya gelebilir
+      };
+      const sftpConnectionId = await SFTPClient.connect(sftpConfig);
+      console.log(`[${currentSshConnectionId}] SFTP connected with ID: ${sftpConnectionId}`);
+      
+      // Başlangıç dizinini al (genellikle kullanıcının ev dizini)
+      // SFTPClient.js'de bir `pwd` veya `getHomeDirectory` metodu olmalı ya da eklenebilir.
+      // Şimdilik varsayılan olarak '/' veya kullanıcı adından türetilmiş bir yol kullanılabilir.
+      // En basit haliyle, SFTPClient.list(sftpConnectionId, '.') ile başlanabilir, bu genellikle ev dizinini verir.
+      let initialPath = '/'; // Varsayılan
+      try {
+        // SFTPClient'in `list` metodu genellikle göreceli yolları da destekler.
+        // Home dizinini almak için basit bir yol: '.' listelemek ve ilk gerçek dizini almak ya da doğrudan pwd benzeri bir komut çalıştırmak.
+        // SFTPClient'da `pwd()` gibi bir metod yoksa, bunu eklemek daha iyi olur.
+        // Şimdilik `.` ile başlıyoruz, SFTP sunucuları genellikle bunu ev dizini olarak yorumlar.
+        const homeDirTest = await SFTPClient.list(sftpConnectionId, '.');
+        if (homeDirTest && homeDirTest.success) {
+            // `list` direkt path dönmüyor, bu yüzden `.` kullanmak ve renderer'da path'i oluşturmak daha mantıklı.
+            initialPath = '.'; // Renderer bu '.'yı uygun şekilde yorumlayacak (veya sunucu home dir'e yönlendirecek)
+            // Alternatif olarak, SFTPClient'a bir getHomeDir() metodu eklenebilir.
+        } else {
+            console.warn(`[${sftpConnectionId}] Could not determine initial SFTP path, using '/'.`);
+        }
+      } catch (pathError) {
+        console.warn(`[${sftpConnectionId}] Error determining initial SFTP path, using '/':`, pathError.message);
+      }
+
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sftp-ready', { 
+          sshConnectionId: currentSshConnectionId, 
+          sftpConnectionId: sftpConnectionId,
+          initialPath: initialPath 
+        });
+      }
+    } catch (sftpError) {
+      console.error(`[${currentSshConnectionId}] SFTP connection failed:`, sftpError.message);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('sftp-failed', { sshConnectionId: currentSshConnectionId, error: sftpError.message });
+        // SFTP bağlanamadıysa arayüze `sftp-close` gibi bir event göndererek UI'ı temizletebiliriz.
+        mainWindow.webContents.send('sftp-close', { sshConnectionId: currentSshConnectionId, reason: 'sftp_connect_failed' });
+      }
+    }
+
+    return { success: true, connectionId: currentSshConnectionId };
+  } catch (error) {
+    // Eğer SSHClient.connect hata fırlatırsa currentSshConnectionId tanımsız olabilir.
+    console.error('SSH connection error:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// SSH bağlantısı kesildiğinde istatistik çekmeyi ve SFTP'yi durdur/temizle
+ipcMain.handle('disconnect-ssh', (event, sshConnectionId) => {
+  try {
+    if (activeStatIntervals.has(sshConnectionId)) {
+      clearInterval(activeStatIntervals.get(sshConnectionId));
+      activeStatIntervals.delete(sshConnectionId);
+      console.log(`[${sshConnectionId}] Stats interval stopped (disconnect request).`);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+         mainWindow.webContents.send('clear-remote-system-info', { connectionId: sshConnectionId });
+      }
+    }
+    SSHClient.close(sshConnectionId);
+    
+    // İlgili SFTP bağlantısını da kapat ve arayüzü bilgilendir.
+    // Bu, SFTP bağlantılarının SSH ID'leri ile eşlenmesini gerektirir.
+    // Şimdilik genel bir sftp-close gönderiyoruz, renderer tarafı ilgilenir.
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      console.log(`[${sshConnectionId}] Sending sftp-close due to SSH disconnect.`);
+      mainWindow.webContents.send('sftp-close', { sshConnectionId: sshConnectionId, reason: 'ssh_disconnected' });
+    }
+
+    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -340,24 +415,6 @@ ipcMain.handle('write-ssh', (event, connectionId, data) => {
 ipcMain.handle('resize-ssh', (event, connectionId, cols, rows) => {
   try {
     SSHClient.resize(connectionId, cols, rows);
-    return { success: true };
-  } catch (error) {
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('disconnect-ssh', (event, connectionId) => {
-  try {
-    if (activeStatIntervals.has(connectionId)) {
-      clearInterval(activeStatIntervals.get(connectionId));
-      activeStatIntervals.delete(connectionId);
-      console.log(`[${connectionId}] Stats interval stopped (disconnect request).`);
-      if (mainWindow && !mainWindow.isDestroyed()) {
-         mainWindow.webContents.send('clear-remote-system-info', { connectionId });
-      }
-    }
-    SSHClient.close(connectionId); // Bu, client'ın 'close' event'ini tetikleyecek
-                                   // ve SSHClient içinde this.connections'tan silinecek.
     return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
