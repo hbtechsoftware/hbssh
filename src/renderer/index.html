@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>HBSSH - SSH Client</title>
+  <link rel="stylesheet" href="../../node_modules/@xterm/xterm/css/xterm.css">
+  <script src="../../node_modules/@xterm/xterm/lib/xterm.js"></script>
+  <script src="../../node_modules/@xterm/addon-fit/lib/addon-fit.js"></script>
+  <link rel="stylesheet" href="./styles/main.css">
+</head>
+<body>
+  <div class="app-container">
+    <!-- Sidebar with saved connections -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>HBSSH</h2>
+        <button id="newConnectionBtn" class="btn btn-primary">New Connection</button>
+      </div>
+      <div class="connections-list" id="connectionsList">
+        <!-- Connections will be loaded here dynamically -->
+      </div>
+    </div>
+    
+    <!-- Main content area -->
+    <div class="main-content">
+      <!-- Tabs container -->
+      <div class="tabs-container">
+        <div class="tabs" id="tabs">
+          <!-- Tabs will be added here dynamically -->
+        </div>
+        <button id="newTabBtn" class="tab-button">+</button>
+      </div>
+      
+      <!-- App toolbar -->
+      <div class="app-toolbar" id="appToolbar">
+        <!-- Toolbar buttons will be added here -->
+      </div>
+      
+      <!-- Terminal/content container -->
+      <div class="terminal-container" id="terminalContainer">
+        <!-- Terminal instances will be created here -->
+        <div class="welcome-screen" id="welcomeScreen">
+          <h1>Welcome to HBSSH</h1>
+          <p>Select a saved connection or create a new one to get started.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Connection modal -->
+  <div class="modal" id="connectionModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>New Connection</h2>
+        <span class="close-modal" id="closeModal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <form id="connectionForm">
+          <div class="form-group">
+            <label for="connectionName">Connection Name</label>
+            <input type="text" id="connectionName" required>
+          </div>
+          <div class="form-group">
+            <label for="host">Host</label>
+            <input type="text" id="host" required>
+          </div>
+          <div class="form-group">
+            <label for="port">Port</label>
+            <input type="number" id="port" value="22">
+          </div>
+          <div class="form-group">
+            <label for="username">Username</label>
+            <input type="text" id="username" required>
+          </div>
+          <div class="form-group">
+            <label for="authType">Authentication</label>
+            <select id="authType">
+              <option value="password">Password</option>
+              <option value="privateKey">Private Key</option>
+            </select>
+          </div>
+          <div class="form-group" id="passwordGroup">
+            <label for="password">Password</label>
+            <input type="password" id="password">
+          </div>
+          <div class="form-group hidden" id="privateKeyGroup">
+            <label for="privateKeyPath">Private Key Path</label>
+            <div class="file-input-group">
+              <input type="text" id="privateKeyPath" readonly>
+              <button type="button" id="browseKeyBtn" class="btn">Browse</button>
+            </div>
+            <div class="form-group">
+              <label for="passphrase">Passphrase (if any)</label>
+              <input type="password" id="passphrase">
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Save Connection</button>
+            <button type="button" id="cancelBtn" class="btn">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- About modal -->
+  <div class="modal" id="aboutModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>About HBSSH</h2>
+        <span class="close-modal" id="closeAboutModal">&times;</span>
+      </div>
+      <div class="modal-body">
+        <h3>HBSSH - Version 0.1.0</h3>
+        <p>A modern, cross-platform SSH client for Windows and macOS.</p>
+        <p>Created by HBTech</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
+</body>
+</html> 

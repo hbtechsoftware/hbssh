@@ -1,0 +1,351 @@
+/* === Base Styles === */
+:root {
+  --bg-color: #1e1e1e;
+  --sidebar-bg: #252526;
+  --primary-color: #0078d4;
+  --secondary-color: #3a3a3a;
+  --text-color: #e1e1e1;
+  --text-muted: #a1a1a1;
+  --border-color: #3a3a3a;
+  --tab-active: #1e1e1e;
+  --tab-inactive: #2d2d2d;
+  --danger-color: #f14c4c;
+  --success-color: #13a10e;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* === Layout === */
+.app-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.sidebar {
+  width: 250px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sidebar-header {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.connections-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* === Buttons === */
+.btn {
+  padding: 8px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn:hover {
+  background-color: #454545;
+}
+
+.btn-primary {
+  background-color: var(--primary-color);
+  border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+  background-color: #106ebe;
+}
+
+.btn-danger {
+  background-color: var(--danger-color);
+  border-color: var(--danger-color);
+}
+
+.btn-danger:hover {
+  background-color: #d13b3b;
+}
+
+/* === Tabs === */
+.tabs-container {
+  display: flex;
+  background-color: var(--secondary-color);
+  border-bottom: 1px solid var(--border-color);
+}
+
+/* === App Toolbar === */
+.app-toolbar {
+  display: flex;
+  background-color: var(--secondary-color);
+  border-bottom: 1px solid var(--border-color);
+  padding: 5px 10px;
+}
+
+.app-toolbar .toolbar-button {
+  background: none;
+  border: none;
+  color: var(--text-color);
+  font-size: 16px;
+  padding: 5px 10px;
+  margin-right: 5px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.app-toolbar .toolbar-button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.app-toolbar .toolbar-button:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.tabs {
+  display: flex;
+  overflow-x: auto;
+  flex: 1;
+}
+
+.tab {
+  padding: 8px 15px;
+  background-color: var(--tab-inactive);
+  border-right: 1px solid var(--border-color);
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tab.active {
+  background-color: var(--tab-active);
+}
+
+.tab-button {
+  padding: 8px 12px;
+  background-color: var(--secondary-color);
+  border: none;
+  border-left: 1px solid var(--border-color);
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.tab-close {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.tab-close:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* === Terminal === */
+.terminal-container {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.terminal-instance {
+  height: 100%;
+  width: 100%;
+  display: none;
+}
+
+.terminal-instance.active {
+  display: block;
+}
+
+.welcome-screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  text-align: center;
+  padding: 20px;
+}
+
+.welcome-screen h1 {
+  margin-bottom: 20px;
+}
+
+/* === Connection List === */
+.connection-item {
+  padding: 10px;
+  border-radius: 4px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.connection-item:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.connection-info {
+  flex: 1;
+}
+
+.connection-name {
+  font-weight: bold;
+  margin-bottom: 3px;
+}
+
+.connection-details {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.connection-actions {
+  display: flex;
+  gap: 5px;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.connection-item:hover .connection-actions {
+  opacity: 1;
+}
+
+.connection-action {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+}
+
+.connection-action:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* === Forms === */
+.form-group {
+  margin-bottom: 15px;
+}
+
+label {
+  display: block;
+  margin-bottom: 5px;
+}
+
+input, select {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background-color: var(--secondary-color);
+  color: var(--text-color);
+}
+
+.file-input-group {
+  display: flex;
+  gap: 8px;
+}
+
+.file-input-group input {
+  flex: 1;
+}
+
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.hidden {
+  display: none;
+}
+
+/* === Modal === */
+.modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 1000;
+}
+
+.modal.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-content {
+  background-color: var(--bg-color);
+  border-radius: 6px;
+  width: 500px;
+  max-width: 90%;
+  max-height: 90vh;
+  overflow: auto;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  padding: 15px;
+  border-bottom: 1px solid var(--border-color);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.modal-body {
+  padding: 15px;
+}
+
+.close-modal {
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.close-modal:hover {
+  color: var(--text-muted);
+} 
