@@ -192,6 +192,57 @@ class SftpManager extends EventEmitter {
   }
   
   /**
+   * Read a remote file and return its content as a string
+   * @param {string} connectionId - Connection ID
+   * @param {string} remotePath - Remote file path
+   * @returns {Promise<string>} File content
+   */
+  async readFile(connectionId, remotePath) {
+    const connection = this.connections[connectionId];
+    if (!connection) {
+      throw new Error('SFTP Connection not found');
+    }
+    if (!connection.sftp) {
+        throw new Error('SFTP client is not initialized');
+    }
+
+    try {
+      // ssh2-sftp-client's get method can accept a WritableStream or return a Buffer if destination is null/undefined
+      const buffer = await connection.sftp.get(remotePath);
+      return buffer.toString('utf8');
+    } catch (error) {
+      console.error(`[${connectionId}] SFTP readFile error for ${remotePath}:`, error);
+      throw new Error(`Failed to read file ${remotePath}: ${error.message}`);
+    }
+  }
+
+  /**
+   * Write content to a remote file
+   * @param {string} connectionId - Connection ID
+   * @param {string} remotePath - Remote file path
+   * @param {string|Buffer} content - Content to write
+   * @returns {Promise<void>}
+   */
+  async writeFile(connectionId, remotePath, content) {
+    const connection = this.connections[connectionId];
+    if (!connection) {
+      throw new Error('SFTP Connection not found');
+    }
+    if (!connection.sftp) {
+        throw new Error('SFTP client is not initialized');
+    }
+
+    try {
+      // ssh2-sftp-client's put method can accept a Buffer, string (path to local file), or ReadableStream
+      const bufferContent = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
+      await connection.sftp.put(bufferContent, remotePath);
+    } catch (error) {
+      console.error(`[${connectionId}] SFTP writeFile error for ${remotePath}:`, error);
+      throw new Error(`Failed to write file ${remotePath}: ${error.message}`);
+    }
+  }
+  
+  /**
    * Download a file
    * @param {string} connectionId - Connection ID
    * @param {string} remotePath - Remote file path

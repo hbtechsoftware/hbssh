@@ -448,4 +448,47 @@ input, select {
   padding: 10px;
   text-align: center;
   color: #888;
+}
+
+/* File Editor Modal Stilleri */
+.editor-modal-content {
+  width: 80vw; /* Genişlik */
+  max-width: 1000px;
+  height: 80vh; /* Yükseklik */
+  display: flex;
+  flex-direction: column;
+}
+
+.editor-modal-body {
+  flex-grow: 1; /* Metin alanının kalan alanı kaplaması için */
+  padding: 0; /* Metin alanı tam kenarlara yapışsın */
+  display: flex; /* Metin alanının içini doldurması için */
+}
+
+#fileEditorTextarea {
+  width: 100%;
+  height: 100%;
+  border: none;
+  background-color: #2d2d2d; /* Editör arkaplanı */
+  color: var(--text-color);
+  font-family: 'Menlo', 'Monaco', 'Courier New', monospace; /* Kod fontu */
+  font-size: 14px;
+  padding: 15px;
+  resize: none; /* Yeniden boyutlandırmayı engelle */
+  outline: none; /* Odaklandığında kenarlık olmasın */
+}
+
+.editor-modal-footer {
+  padding: 10px 15px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  justify-content: flex-end; /* Butonları sağa yasla */
+  align-items: center;
+  gap: 10px;
+}
+
+.editor-status {
+  font-size: 0.9em;
+  color: var(--text-muted);
+  margin-right: auto; /* Durum yazısını sola yasla */
 } 

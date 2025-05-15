@@ -593,4 +593,25 @@ ipcMain.handle('sftp-stat', async (event, connectionId, remotePath) => {
   } catch (error) {
     return { success: false, error: error.message };
   }
+});
+
+// IPC Handlers for SFTP file operations
+ipcMain.handle('sftp-read-file', async (event, { connectionId, remoteFilePath }) => {
+  try {
+    const content = await SFTPClient.readFile(connectionId, remoteFilePath);
+    return { success: true, content };
+  } catch (error) {
+    console.error(`[${connectionId}] Error reading remote file ${remoteFilePath}:`, error);
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('sftp-write-file', async (event, { connectionId, remoteFilePath, content }) => {
+  try {
+    await SFTPClient.writeFile(connectionId, remoteFilePath, content);
+    return { success: true };
+  } catch (error) {
+    console.error(`[${connectionId}] Error writing remote file ${remoteFilePath}:`, error);
+    return { success: false, error: error.message };
+  }
 }); 

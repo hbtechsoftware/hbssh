@@ -137,9 +137,28 @@
     </div>
   </div>
 
+  <!-- File Editor Modal -->
+  <div class="modal" id="fileEditorModal">
+    <div class="modal-content editor-modal-content">
+      <div class="modal-header">
+        <h2 id="fileEditorTitle">Dosya Düzenle</h2>
+        <span class="close-modal" id="closeFileEditorModal">&times;</span>
+      </div>
+      <div class="modal-body editor-modal-body">
+        <textarea id="fileEditorTextarea" spellcheck="false"></textarea>
+      </div>
+      <div class="modal-footer editor-modal-footer">
+        <span id="fileEditorStatus" class="editor-status"></span>
+        <button id="saveFileButton" class="btn btn-primary">Kaydet</button>
+        <button id="cancelFileEditButton" class="btn">İptal</button>
+      </div>
+    </div>
+  </div>
+
   <script type="module" src="./js/app.js"></script>
   <script src="./js/status-bar.js"></script>
   <script type="module" src="./js/sftp-browser.js"></script>
+  <script type="module" src="./js/file-editor.js"></script>
 
   <div id="statusBar" style="position: fixed; bottom: 0; left: 0; width: 100%; background-color: #333; color: white; padding: 5px 10px; font-size: 0.8em; display: flex; justify-content: space-around; z-index: 1000;">
     <span id="cpuUsage">💻 CPU: N/A</span>

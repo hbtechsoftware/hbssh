@@ -96,5 +96,9 @@ contextBridge.exposeInMainWorld('api', {
   onSftpClose: (callback) => {
     ipcRenderer.on('sftp-close', (event, data) => callback(data));
     return () => ipcRenderer.removeListener('sftp-close', callback);
-  }
+  },
+
+  // Dosya Editörü için SFTP API'leri
+  sftpReadFile: (sftpConnectionId, remotePath) => ipcRenderer.invoke('sftp-read-file', { connectionId: sftpConnectionId, remoteFilePath: remotePath }),
+  sftpWriteFile: (sftpConnectionId, remotePath, content) => ipcRenderer.invoke('sftp-write-file', { connectionId: sftpConnectionId, remoteFilePath: remotePath, content: content })
 }); 
