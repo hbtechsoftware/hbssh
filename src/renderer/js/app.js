@@ -1,4 +1,3 @@
-// Import managers
 import { ConnectionManager } from './connection-manager.js';
 import { TerminalManager } from './terminal-manager.js';
 import { TabManager } from './tab-manager.js';
