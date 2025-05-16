@@ -898,3 +898,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
 console.log('SFTP Browser script loaded and initialized.'); 
 console.log('SFTP Browser script loaded with action buttons and selection logic.'); 
+
+/**
+ * SFTP dosya listesine sürükle-bırak ile dosya yükleme desteği ekler.
+ * Kullanıcı dosya(lar)ı bu alana bıraktığında, dosyalar mevcut uzak dizine yüklenir.
+ */
+sftpFileListElement.addEventListener('dragover', (event) => {
+  event.preventDefault();
+  sftpFileListElement.classList.add('drag-over');
+});
+
+sftpFileListElement.addEventListener('dragleave', (event) => {
+  event.preventDefault();
+  sftpFileListElement.classList.remove('drag-over');
+});
+
+sftpFileListElement.addEventListener('drop', async (event) => {
+  event.preventDefault();
+  sftpFileListElement.classList.remove('drag-over');
+  if (!sftpConnectionId || !sftpCurrentSshConnectionId) {
+    alert('SFTP bağlantısı veya ilişkili SSH ID aktif değil.');
+    return;
+  }
+  const files = Array.from(event.dataTransfer.files);
+  if (!files.length) return;
+  showLoading(true);
+  let allUploadsSuccessful = true;
+  for (const file of files) {
+    const localPath = file.path;
+    const fileName = file.name;
+    const remotePath = buildItemPath(fileName);
+    try {
+      const result = await window.api.sftpUpload(sftpConnectionId, localPath, remotePath);
+      if (!result.success) {
+        allUploadsSuccessful = false;
+        console.error(`Sürükle-bırak ile yükleme başarısız: ${fileName}: ${result.error}`);
+        alert(`'${fileName}' yüklenirken hata: ${result.error}`);
+      }
+    } catch (error) {
+      allUploadsSuccessful = false;
+      console.error(`Sürükle-bırak yükleme isteği hatası: ${fileName}:`, error);
+      alert(`'${fileName}' yükleme isteği sırasında hata: ${error.message}`);
+    }
+  }
+  if (allUploadsSuccessful) {
+    console.log('[SFTP Browser] Sürükle-bırak ile tüm dosyalar başarıyla yüklendi.');
+  }
+  showLoading(false);
+  await fetchAndDisplayDirectory(currentRemotePath);
+}); 
