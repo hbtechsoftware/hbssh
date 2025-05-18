@@ -1,13 +1,13 @@
 /**
- * Arayüz etkileşimlerini ve diğer yöneticiler arasındaki bağlantıları yönetir
+ * Manages UI interactions and connections between other managers.
  */
 export class UIManager {
   /**
-   * UI Yöneticisini başlatır
-   * @param {ConnectionManager} connectionManager - Bağlantı yöneticisi örneği
-   * @param {TerminalManager} terminalManager - Terminal yöneticisi örneği
-   * @param {TabManager} tabManager - Sekme yöneticisi örneği
-   * @param {SFTPManager} sftpManager - SFTP yöneticisi örneği
+   * Initializes the UI Manager.
+   * @param {ConnectionManager} connectionManager - The connection manager instance.
+   * @param {TerminalManager} terminalManager - The terminal manager instance.
+   * @param {TabManager} tabManager - The tab manager instance.
+   * @param {SFTPManager} sftpManager - The SFTP manager instance.
    */
   constructor(connectionManager, terminalManager, tabManager, sftpManager) {
     this.connectionManager = connectionManager;
@@ -40,7 +40,7 @@ export class UIManager {
   }
   
   /**
-   * Arayüzü başlatır ve gerekli olay dinleyicilerini ekler
+   * Initializes the UI and adds necessary event listeners.
    */
   init() {
     // Set up button event listeners
@@ -63,8 +63,8 @@ export class UIManager {
   }
 
   /**
-   * Bağlantı ekleme/düzenleme penceresini gösterir
-   * @param {Object} existingConnection - Düzenlenecek mevcut bağlantı (opsiyonel)
+   * Shows the add/edit connection modal.
+   * @param {Object} existingConnection - The existing connection to edit (optional).
    */
   showConnectionModal(existingConnection = null) {
     // Reset form
@@ -72,7 +72,7 @@ export class UIManager {
     
     // Set modal title
     const modalTitle = document.querySelector('#connectionModal .modal-header h2');
-    modalTitle.textContent = existingConnection ? 'Bağlantıyı Düzenle' : 'Yeni Bağlantı';
+    modalTitle.textContent = existingConnection ? 'Edit Connection' : 'New Connection';
     
     // If editing existing connection, fill in the form
     if (existingConnection) {
@@ -108,62 +108,62 @@ export class UIManager {
   }
   
   /**
-   * Bağlantı ekleme/düzenleme penceresini gizler
+   * Hides the add/edit connection modal.
    */
   hideConnectionModal() {
     this.connectionModal.classList.remove('show');
   }
   
   /**
-   * Hakkında penceresini gösterir
+   * Shows the about modal.
    */
   showAboutModal() {
     this.aboutModal.classList.add('show');
   }
   
   /**
-   * Hakkında penceresini gizler
+   * Hides the about modal.
    */
   hideAboutModal() {
     this.aboutModal.classList.remove('show');
   }
   
   /**
-   * Yeni bağlantı ekleme isteğini işler
+   * Handles the request to add a new connection.
    */
   handleNewConnection() {
     this.showConnectionModal();
   }
   
   /**
-   * Bağlantı bilgisini doğrular
-   * @param {Object} connection - Doğrulanacak bağlantı nesnesi
-   * @returns {Object} isValid ve message özellikleriyle doğrulama sonucu
+   * Validates the connection information.
+   * @param {Object} connection - The connection object to validate.
+   * @returns {Object} Validation result with isValid and message properties.
    */
   validateConnection(connection) {
     if (!connection.name || connection.name.trim() === '') {
-      return { isValid: false, message: 'Bağlantı adı gereklidir' };
+      return { isValid: false, message: 'Connection name is required' };
     }
     
     if (!connection.host || connection.host.trim() === '') {
-      return { isValid: false, message: 'Sunucu adresi gereklidir' };
+      return { isValid: false, message: 'Server address is required' };
     }
     
     if (!connection.port || connection.port <= 0 || connection.port > 65535) {
-      return { isValid: false, message: 'Port 1 ile 65535 arasında olmalıdır' };
+      return { isValid: false, message: 'Port must be between 1 and 65535' };
     }
     
     if (!connection.username || connection.username.trim() === '') {
-      return { isValid: false, message: 'Kullanıcı adı gereklidir' };
+      return { isValid: false, message: 'Username is required' };
     }
     
     if (connection.authType === 'password') {
       if (!connection.password || connection.password.trim() === '') {
-        return { isValid: false, message: 'Parola ile kimlik doğrulama için parola gereklidir' };
+        return { isValid: false, message: 'Password is required for password authentication' };
       }
     } else if (connection.authType === 'privateKey') {
       if (!connection.privateKeyPath || connection.privateKeyPath.trim() === '') {
-        return { isValid: false, message: 'Anahtar ile kimlik doğrulama için anahtar yolu gereklidir' };
+        return { isValid: false, message: 'Key path is required for private key authentication' };
       }
     }
     
@@ -171,8 +171,8 @@ export class UIManager {
   }
   
   /**
-   * Bağlantı formu gönderimini işler
-   * @param {Event} event - Form gönderim olayı
+   * Handles the connection form submission.
+   * @param {Event} event - The form submission event.
    */
   async handleSubmitConnection(event) {
     event.preventDefault();
@@ -212,7 +212,7 @@ export class UIManager {
       // Show error message
       window.api.showMessage({
         type: 'error',
-        title: 'Geçersiz Bağlantı',
+        title: 'Invalid Connection',
         message: validation.message
       });
       return;
@@ -228,14 +228,14 @@ export class UIManager {
       // Show error message
       window.api.showMessage({
         type: 'error',
-        title: 'Kaydetme Hatası',
-        message: `Bağlantı kaydedilemedi: ${error.message}`
+        title: 'Save Error',
+        message: `Failed to save connection: ${error.message}`
       });
     }
   }
   
   /**
-   * Kimlik doğrulama türü değişimini işler
+   * Handles the authentication type change.
    */
   handleAuthTypeChange() {
     const authType = this.authType.value;
@@ -250,8 +250,8 @@ export class UIManager {
   }
   
   /**
-   * Bağlantı öğesine tıklanmasını işler
-   * @param {Object} connection - Tıklanan bağlantı
+   * Handles clicking on a connection item.
+   * @param {Object} connection - The clicked connection.
    */
   handleConnectionClick(connection) {
     // Create a new tab with the connection
@@ -259,7 +259,7 @@ export class UIManager {
   }
   
   /**
-   * Kayıtlı bağlantı listesini arayüzde günceller
+   * Updates the list of saved connections in the UI.
    */
   updateConnectionsList() {
     // Clear the existing list
@@ -272,7 +272,7 @@ export class UIManager {
     if (connections.length === 0) {
       const noConnections = document.createElement('div');
       noConnections.className = 'no-connections';
-      noConnections.textContent = 'Kayıtlı bağlantı yok';
+      noConnections.textContent = 'No saved connections';
       this.connectionsList.appendChild(noConnections);
       return;
     }
@@ -304,7 +304,7 @@ export class UIManager {
       const editAction = document.createElement('div');
       editAction.className = 'connection-action';
       editAction.textContent = '✏️';
-      editAction.title = 'Bağlantıyı düzenle';
+      editAction.title = 'Edit connection';
       editAction.addEventListener('click', (e) => {
         e.stopPropagation();
         this.showConnectionModal(connection);
@@ -313,13 +313,13 @@ export class UIManager {
       const deleteAction = document.createElement('div');
       deleteAction.className = 'connection-action';
       deleteAction.textContent = '🗑️';
-      deleteAction.title = 'Bağlantıyı sil';
+      deleteAction.title = 'Delete connection';
       deleteAction.addEventListener('click', async (e) => {
         e.stopPropagation();
         const confirmDelete = await window.api.showConfirmDialog({
-          title: 'Bağlantıyı Sil',
-          message: `"${connection.name}" bağlantısını silmek istediğinize emin misiniz?`,
-          buttons: ['Sil', 'Vazgeç']
+          title: 'Delete Connection',
+          message: `Are you sure you want to delete the connection "${connection.name}"?`,
+          buttons: ['Delete', 'Cancel']
         });
         
         if (confirmDelete.response === 0) {
@@ -328,8 +328,8 @@ export class UIManager {
           } catch (error) {
             window.api.showMessage({
               type: 'error',
-              title: 'Silme Hatası',
-              message: `Bağlantı silinemedi: ${error.message}`
+              title: 'Delete Error',
+              message: `Failed to delete connection: ${error.message}`
             });
           }
         }
@@ -353,18 +353,18 @@ export class UIManager {
   }
 
   /**
-   * Özel anahtar dosyası seçmek için dosya seçici açar
+   * Opens a file dialog to select a private key file.
    */
   async handleBrowseForKey() {
     try {
       // Use the main process to open a file dialog
       const result = await window.api.openFileDialog({
-        title: 'Özel Anahtar Dosyasını Seç',
+        title: 'Select Private Key File',
         defaultPath: window.api.getHomePath(),
-        buttonLabel: 'Anahtarı Seç',
+        buttonLabel: 'Select Key',
         filters: [
-          { name: 'Anahtar Dosyaları', extensions: ['pem', 'key', 'ppk', 'pub'] },
-          { name: 'Tüm Dosyalar', extensions: ['*'] }
+          { name: 'Key Files', extensions: ['pem', 'key', 'ppk', 'pub'] },
+          { name: 'All Files', extensions: ['*'] }
         ],
         properties: ['openFile']
       });
@@ -374,7 +374,7 @@ export class UIManager {
         document.getElementById('privateKeyPath').value = result.filePaths[0];
       }
     } catch (error) {
-      console.error('Dosya seçici açılamadı:', error);
+      console.error('Failed to open file dialog:', error);
     }
   }
 } 

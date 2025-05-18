@@ -1,25 +1,25 @@
 /**
- * Terminal örneklerini ve SSH bağlantılarını yönetir.
- * XTerm.js tabanlı terminal arayüzü sağlar, SSH bağlantılarını açar, kapatır ve yeniden bağlanma işlemlerini yönetir.
+ * Manages terminal instances and SSH connections.
+ * Provides an XTerm.js-based terminal interface, opens and closes SSH connections, and handles reconnection processes.
  */
 export class TerminalManager {
   /**
-   * TerminalManager örneğini başlatır. Tüm terminal ve bağlantı yapılarını oluşturur, olay dinleyicilerini kaydeder.
+   * Initializes the TerminalManager instance. Creates all terminal and connection structures, registers event listeners.
    */
   constructor() {
-    /** @type {Object<string, Object>} Tüm terminal örneklerini ID'ye göre saklar. */
+    /** @type {Object<string, Object>} Stores all terminal instances by ID. */
     this.terminals = {};
-    /** @type {string|null} Aktif terminalin ID'si. */
+    /** @type {string|null} The ID of the active terminal. */
     this.activeTerminalId = null;
-    /** @type {Object<string, string>} SSH bağlantı ID'sinden terminal ID'sine eşleme. */
+    /** @type {Object<string, string>} Mapping from SSH connection ID to terminal ID. */
     this.sshConnections = {};
-    /** @type {Object<string, number>} Her terminal için yeniden bağlanma zamanlayıcıları. */
+    /** @type {Object<string, number>} Reconnection timers for each terminal. */
     this.reconnectTimers = {};
-    /** @type {Object<string, number>} Her terminal için yeniden bağlanma deneme sayacı. */
+    /** @type {Object<string, number>} Reconnection attempt counter for each terminal. */
     this.reconnectAttempts = {};
-    /** @type {number} Maksimum yeniden bağlanma denemesi. */
+    /** @type {number} Maximum reconnection attempts. */
     this.MAX_RECONNECT_ATTEMPTS = 5;
-    /** @type {number} Yeniden bağlanma aralığı (ms). */
+    /** @type {number} Reconnection interval (ms). */
     this.RECONNECT_INTERVAL = 3000;
     
     this.createTerminal = this.createTerminal.bind(this);
@@ -41,8 +41,8 @@ export class TerminalManager {
   }
   
   /**
-   * Klavye kısayollarını (kopyala/yapıştır) yönetir.
-   * @param {KeyboardEvent} event - Klavye olayı
+   * Handles keyboard shortcuts (copy/paste).
+   * @param {KeyboardEvent} event - The keyboard event.
    */
   handleKeyboardEvent(event) {
     const activeElement = document.activeElement;
@@ -72,7 +72,7 @@ export class TerminalManager {
   }
   
   /**
-   * Aktif terminalde seçili metni panoya kopyalar.
+   * Copies the selected text in the active terminal to the clipboard.
    */
   async copySelectedText() {
     if (!this.activeTerminalId) return;
@@ -83,13 +83,13 @@ export class TerminalManager {
       try {
         await window.api.writeClipboard(selectedText);
       } catch (error) {
-        console.error('Panoya kopyalama başarısız:', error);
+        console.error('Failed to copy to clipboard:', error);
       }
     }
   }
   
   /**
-   * Panodaki metni aktif terminale yapıştırır.
+   * Pastes text from the clipboard to the active terminal.
    */
   async pasteText() {
     if (!this.activeTerminalId) return;
@@ -101,21 +101,21 @@ export class TerminalManager {
         await window.api.writeSSH(terminalInstance.sshConnectionId, text);
       }
     } catch (error) {
-      console.error('Panodan yapıştırma başarısız:', error);
+      console.error('Failed to paste from clipboard:', error);
     }
   }
   
   /**
-   * Yeni bir terminal örneği oluşturur ve SSH bağlantısı başlatır.
-   * @param {Object} connection - Bağlantı yapılandırma nesnesi
-   * @param {string} tabId - Terminalin ait olduğu sekmenin ID'si
-   * @returns {Promise<Object|null>} Terminal örneği veya hata durumunda null
+   * Creates a new terminal instance and initiates an SSH connection.
+   * @param {Object} connection - The connection configuration object.
+   * @param {string} tabId - The ID of the tab to which the terminal belongs.
+   * @returns {Promise<Object|null>} The terminal instance, or null in case of an error.
    */
   async createTerminal(connection, tabId) {
     const id = tabId || `tab-${Date.now()}-${Object.keys(this.terminals).length}`;
     const terminalElement = document.getElementById(`terminal-${id}`);
     if (!terminalElement) {
-      console.error(`Terminal elementi bulunamadı: terminal-${id}`);
+      console.error(`Terminal element not found: terminal-${id}`);
       return null;
     }
     const terminal = new window.Terminal({
@@ -162,19 +162,19 @@ export class TerminalManager {
   }
   
   /**
-   * Belirtilen terminal ID'si için SSH bağlantısı başlatır veya yeniden bağlanır.
-   * @param {string} id - Terminal ID'si
-   * @param {boolean} [isReconnect=false] - Yeniden bağlanma denemesi mi?
+   * Initiates or reconnects an SSH connection for the specified terminal ID.
+   * @param {string} id - The terminal ID.
+   * @param {boolean} [isReconnect=false] - Is this a reconnection attempt?
    */
   async initSSHConnection(id, isReconnect = false) {
     const terminalInstance = this.terminals[id];
     if (!terminalInstance) return;
     const { terminal, connection } = terminalInstance;
     if (isReconnect) {
-      terminal.writeln('\r\nBağlantı koptu. Yeniden bağlanılıyor...');
+      terminal.writeln('\r\nConnection lost. Reconnecting...');
       terminalInstance.reconnecting = true;
     } else {
-      terminal.writeln('SSH sunucusuna bağlanılıyor...');
+      terminal.writeln('Connecting to SSH server...');
     }
     try {
       const result = await window.api.connectSSH(connection);
@@ -187,7 +187,7 @@ export class TerminalManager {
           delete this.reconnectTimers[id];
         }
         if (terminalInstance.reconnecting) {
-          terminal.writeln('\r\nSunucuya yeniden bağlanıldı.');
+          terminal.writeln('\r\nReconnected to server.');
           terminalInstance.reconnecting = false;
         }
         this.fitTerminal(id);
@@ -196,18 +196,18 @@ export class TerminalManager {
           await window.api.resizeSSH(result.connectionId, dimensions.cols, dimensions.rows);
         }
       } else {
-        terminal.writeln(`\r\nBağlantı başarısız: ${result.error}`);
+        terminal.writeln(`\r\nConnection failed: ${result.error}`);
         this.scheduleReconnect(id);
       }
     } catch (error) {
-      terminal.writeln(`\r\nBağlantı hatası: ${error.message}`);
+      terminal.writeln(`\r\nConnection error: ${error.message}`);
       this.scheduleReconnect(id);
     }
   }
   
   /**
-   * Belirtilen terminal için yeniden bağlanma zamanlayıcısı başlatır.
-   * @param {string} id - Terminal ID'si
+   * Schedules a reconnection attempt for the specified terminal.
+   * @param {string} id - The terminal ID.
    */
   scheduleReconnect(id) {
     const terminalInstance = this.terminals[id];
@@ -217,7 +217,7 @@ export class TerminalManager {
     }
     this.reconnectAttempts[id]++;
     if (this.reconnectAttempts[id] > this.MAX_RECONNECT_ATTEMPTS) {
-      terminalInstance.terminal.writeln(`\r\n${this.MAX_RECONNECT_ATTEMPTS} denemeden sonra yeniden bağlanılamadı.`);
+      terminalInstance.terminal.writeln(`\r\nFailed to reconnect after ${this.MAX_RECONNECT_ATTEMPTS} attempts.`);
       return;
     }
     if (this.reconnectTimers[id]) {
@@ -231,13 +231,13 @@ export class TerminalManager {
         delete this.reconnectAttempts[id];
       }
     }, this.RECONNECT_INTERVAL);
-    terminalInstance.terminal.writeln(`\r\n${this.RECONNECT_INTERVAL / 1000} saniye sonra yeniden bağlanılacak... (Deneme ${this.reconnectAttempts[id]} / ${this.MAX_RECONNECT_ATTEMPTS})`);
+    terminalInstance.terminal.writeln(`\r\nReconnecting in ${this.RECONNECT_INTERVAL / 1000} seconds... (Attempt ${this.reconnectAttempts[id]} / ${this.MAX_RECONNECT_ATTEMPTS})`);
   }
   
   /**
-   * Terminalden gelen kullanıcı girişini işler ve SSH bağlantısına iletir.
-   * @param {string} id - Terminal ID'si
-   * @param {string} data - Kullanıcıdan gelen veri
+   * Handles user input from the terminal and forwards it to the SSH connection.
+   * @param {string} id - The terminal ID.
+   * @param {string} data - The data from the user.
    */
   async handleTerminalInput(id, data) {
     const terminalInstance = this.terminals[id];
@@ -249,15 +249,15 @@ export class TerminalManager {
     try {
       await window.api.writeSSH(terminalInstance.sshConnectionId, data);
     } catch (error) {
-      console.error('SSH bağlantısına veri gönderilemedi:', error);
+      console.error('Failed to send data to SSH connection:', error);
       terminalInstance.buffer.push(data);
     }
   }
   
   /**
-   * SSH bağlantısından gelen veriyi ilgili terminale yazar.
-   * @param {string} connectionId - SSH bağlantı ID'si
-   * @param {string} data - SSH sunucusundan gelen veri
+   * Writes data received from the SSH connection to the corresponding terminal.
+   * @param {string} connectionId - The SSH connection ID.
+   * @param {string} data - The data from the SSH server.
    */
   handleSSHData(connectionId, data) {
     const terminalId = this.sshConnections[connectionId];
@@ -268,8 +268,8 @@ export class TerminalManager {
   }
   
   /**
-   * SSH bağlantısı kapandığında ilgili terminali bilgilendirir ve yeniden bağlanmayı başlatır.
-   * @param {string} connectionId - SSH bağlantı ID'si
+   * Informs the respective terminal when an SSH connection is closed and initiates reconnection.
+   * @param {string} connectionId - The SSH connection ID.
    */
   handleSSHClose(connectionId) {
     const terminalId = this.sshConnections[connectionId];
@@ -278,27 +278,27 @@ export class TerminalManager {
     if (!terminalInstance) return;
     terminalInstance.sshConnectionId = null;
     delete this.sshConnections[connectionId];
-    terminalInstance.terminal.writeln('\r\nBağlantı uzak sunucu tarafından kapatıldı.');
+    terminalInstance.terminal.writeln('\r\nConnection closed by remote server.');
     this.scheduleReconnect(terminalId);
   }
   
   /**
-   * SSH bağlantı hatasını terminalde gösterir.
-   * @param {string} connectionId - SSH bağlantı ID'si
-   * @param {string} error - Hata mesajı
+   * Displays an SSH connection error in the terminal.
+   * @param {string} connectionId - The SSH connection ID.
+   * @param {string} error - The error message.
    */
   handleSSHError(connectionId, error) {
     const terminalId = this.sshConnections[connectionId];
     if (!terminalId) return;
     const terminalInstance = this.terminals[terminalId];
     if (!terminalInstance) return;
-    terminalInstance.terminal.writeln(`\r\nBağlantı hatası: ${error}`);
+    terminalInstance.terminal.writeln(`\r\nConnection error: ${error}`);
   }
   
   /**
-   * Terminalin mevcut boyutlarını (kolon ve satır) döndürür.
-   * @param {string} id - Terminal ID'si
-   * @returns {{cols: number, rows: number}} Terminalin boyutları
+   * Returns the current dimensions (columns and rows) of the terminal.
+   * @param {string} id - The terminal ID.
+   * @returns {{cols: number, rows: number}} The dimensions of the terminal.
    */
   getTerminalDimensions(id) {
     const terminalInstance = this.terminals[id];
@@ -321,8 +321,8 @@ export class TerminalManager {
   }
   
   /**
-   * Bir terminal örneğini kapatır ve SSH bağlantısını sonlandırır.
-   * @param {string} id - Kapatılacak terminalin ID'si
+   * Closes a terminal instance and terminates its SSH connection.
+   * @param {string} id - The ID of the terminal to close.
    */
   async closeTerminal(id) {
     const terminalInstance = this.terminals[id];
@@ -337,7 +337,7 @@ export class TerminalManager {
           await window.api.disconnectSSH(terminalInstance.sshConnectionId);
           delete this.sshConnections[terminalInstance.sshConnectionId];
         } catch (error) {
-          console.error('SSH bağlantısı kapatılamadı:', error);
+          console.error('Failed to close SSH connection:', error);
         }
       }
       terminalInstance.terminal.dispose();
@@ -349,8 +349,8 @@ export class TerminalManager {
   }
   
   /**
-   * Aktif terminali ayarlar ve terminali konteynerine sığdırır.
-   * @param {string} id - Aktif yapılacak terminalin ID'si
+   * Sets the active terminal and fits it to its container.
+   * @param {string} id - The ID of the terminal to make active.
    */
   setActiveTerminal(id) {
     this.activeTerminalId = id;
@@ -358,8 +358,8 @@ export class TerminalManager {
   }
   
   /**
-   * Terminali konteynerine sığdırır ve SSH bağlantısına yeni boyutları bildirir.
-   * @param {string} id - Terminal ID'si
+   * Fits the terminal to its container and notifies the SSH connection of the new dimensions.
+   * @param {string} id - The terminal ID.
    */
   fitTerminal(id) {
     const terminalInstance = this.terminals[id];
@@ -373,13 +373,13 @@ export class TerminalManager {
           }
         }
       } catch (error) {
-        console.error('Terminal sığdırma başarısız:', error);
+        console.error('Failed to fit terminal:', error);
       }
     }
   }
   
   /**
-   * Pencere yeniden boyutlandığında aktif terminali sığdırır.
+   * Fits the active terminal when the window is resized.
    */
   handleResize() {
     if (this.activeTerminalId) {
@@ -388,8 +388,8 @@ export class TerminalManager {
   }
   
   /**
-   * Aktif terminal örneğini döndürür.
-   * @returns {Object|null} Aktif terminal örneği veya yoksa null
+   * Returns the active terminal instance.
+   * @returns {Object|null} The active terminal instance, or null if none exists.
    */
   getActiveTerminal() {
     if (!this.activeTerminalId) return null;
@@ -397,8 +397,8 @@ export class TerminalManager {
   }
   
   /**
-   * Bir terminal oturumunu yeniden başlatır (yeniden bağlanır).
-   * @param {string} id - Yeniden yüklenecek terminalin ID'si
+   * Reloads (reconnects) a terminal session.
+   * @param {string} id - The ID of the terminal to reload.
    */
   async reloadTerminal(id) {
     const terminalInstance = this.terminals[id];
@@ -409,7 +409,7 @@ export class TerminalManager {
         delete this.sshConnections[terminalInstance.sshConnectionId];
         terminalInstance.sshConnectionId = null;
       } catch (error) {
-        console.error('SSH bağlantısı kapatılamadı:', error);
+        console.error('Failed to close SSH connection:', error);
       }
     }
     terminalInstance.terminal.clear();

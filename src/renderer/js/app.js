@@ -5,10 +5,10 @@ import { UIManager } from './ui-manager.js';
 import { SFTPManager } from './sftp-manager.js';
 
 /**
- * DOM içeriği tamamen yüklendiğinde uygulamayı başlatır.
- * Yöneticileri (ConnectionManager, TerminalManager, TabManager, SFTPManager, UIManager) başlatır,
- * kayıtlı bağlantıları yükler, kullanıcı arayüzünü ve sekmeleri hazırlar ve menü olaylarını kaydeder.
- * Başlatma sırasında bir hata oluşursa konsola hata kaydeder.
+ * Initializes the application when the DOM content is fully loaded.
+ * Instantiates managers (ConnectionManager, TerminalManager, TabManager, SFTPManager, UIManager),
+ * loads saved connections, prepares the UI and tabs, and registers menu event listeners.
+ * Logs an error to the console if initialization fails.
  * @async
  */
 document.addEventListener('DOMContentLoaded', async () => {
@@ -25,24 +25,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     tabManager.init();
     
     /**
-     * 'Yeni Bağlantı' menü eylemi için olay dinleyicisi.
-     * Bağlantı modalını gösterir.
+     * Event listener for the 'New Connection' menu action.
+     * Shows the connection modal.
      */
     window.api.onNewConnection(() => {
       uiManager.showConnectionModal();
     });
     
     /**
-     * 'Yeni Sekme' menü eylemi için olay dinleyicisi.
-     * Yeni bir sekme oluşturur.
+     * Event listener for the 'New Tab' menu action.
+     * Creates a new tab.
      */
     window.api.onNewTab(() => {
       tabManager.createNewTab();
     });
     
     /**
-     * 'Hakkında' menü eylemi için olay dinleyicisi.
-     * Hakkında modalını gösterir.
+     * Event listener for the 'About' menu action.
+     * Shows the about modal.
      */
     window.api.onAbout(() => {
       uiManager.showAboutModal();

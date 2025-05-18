@@ -1,30 +1,30 @@
 /**
- * Terminal örnekleri için sekmeleri yönetir.
- * Yeni sekmeler oluşturabilir, sekmeleri etkinleştirebilir, kapatabilir ve özel içerikli sekmeler oluşturabilir.
+ * Manages tabs for terminal instances.
+ * Can create new tabs, activate tabs, close tabs, and create tabs with custom content.
  */
 export class TabManager {
   /**
-   * TabManager örneğini başlatır.
-   * @param {import('./terminal-manager.js').TerminalManager} terminalManager - TerminalManager örneği.
+   * Initializes the TabManager instance.
+   * @param {import('./terminal-manager.js').TerminalManager} terminalManager - The TerminalManager instance.
    */
   constructor(terminalManager) {
     this.terminalManager = terminalManager;
-    /** @type {Array<Object>} Sekmeleri ve meta verilerini tutan dizi. */
+    /** @type {Array<Object>} Array holding tabs and their metadata. */
     this.tabs = [];
-    /** @type {string|null} Aktif olan sekmenin ID'si. */
+    /** @type {string|null} The ID of the active tab. */
     this.activeTabId = null;
     
     this.tabsContainer = document.getElementById('tabs');
     this.terminalContainer = document.getElementById('terminalContainer');
     this.welcomeScreen = document.getElementById('welcomeScreen');
     
-    /** @type {number} Benzersiz sekme ID'leri oluşturmak için sayaç. */
+    /** @type {number} Counter for generating unique tab IDs. */
     this.tabCounter = 0;
   }
   
   /**
-   * TabManager'ı başlatır.
-   * Başlangıç ekranını bulur ve sekme yoksa gösterir.
+   * Initializes the TabManager.
+   * Finds the welcome screen and displays it if there are no tabs.
    */
   init() {
     console.log('Tab Manager initialized');
@@ -39,10 +39,10 @@ export class TabManager {
   }
   
   /**
-   * Yeni bir terminal sekmesi oluşturur.
-   * @param {string} [name='New Tab'] - Sekme için isteğe bağlı ad.
-   * @param {Object} [connection=null] - İsteğe bağlı bağlantı nesnesi. Sağlanırsa, bu bağlantıyla bir terminal oluşturulur.
-   * @returns {string} Oluşturulan yeni sekmenin ID'si.
+   * Creates a new terminal tab.
+   * @param {string} [name='New Tab'] - Optional name for the tab.
+   * @param {Object} [connection=null] - Optional connection object. If provided, a terminal will be created with this connection.
+   * @returns {string} The ID of the newly created tab.
    */
   createNewTab(name = 'New Tab', connection = null) {
     const tabId = `tab-${Date.now()}-${this.tabCounter++}`;
@@ -96,9 +96,9 @@ export class TabManager {
   }
   
   /**
-   * Belirtilen ID'ye sahip sekmeyi etkinleştirir.
-   * Diğer tüm sekmeleri ve terminal örneklerini devre dışı bırakır, karşılama ekranını gizler.
-   * @param {string} tabId - Etkinleştirilecek sekmenin ID'si.
+   * Activates the tab with the specified ID.
+   * Deactivates all other tabs and terminal instances, hides the welcome screen.
+   * @param {string} tabId - The ID of the tab to activate.
    */
   activateTab(tabId) {
     this.tabs.forEach(tab => {
@@ -129,10 +129,10 @@ export class TabManager {
   }
   
   /**
-   * Belirtilen ID'ye sahip sekmeyi kapatır.
-   * Sekme öğesini ve ilişkili terminal örneğini DOM'dan kaldırır.
-   * Eğer kapatılan sekme aktifse, başka bir sekmeyi etkinleştirir veya sekme kalmadıysa karşılama ekranını gösterir.
-   * @param {string} tabId - Kapatılacak sekmenin ID'si.
+   * Closes the tab with the specified ID.
+   * Removes the tab element and its associated terminal instance from the DOM.
+   * If the closed tab was active, it activates another tab or shows the welcome screen if no tabs are left.
+   * @param {string} tabId - The ID of the tab to close.
    */
   closeTab(tabId) {
     const tabIndex = this.tabs.findIndex(t => t.id === tabId);
@@ -166,17 +166,17 @@ export class TabManager {
   }
   
   /**
-   * Aktif olan sekmenin ID'sini döndürür.
-   * @returns {string|null} Aktif sekme ID'si veya aktif sekme yoksa `null`.
+   * Returns the ID of the active tab.
+   * @returns {string|null} The active tab ID, or `null` if no tab is active.
    */
   getActiveTabId() {
     return this.activeTabId;
   }
   
   /**
-   * Belirtilen ID'ye sahip sekmenin adını günceller.
-   * @param {string} tabId - Güncellenecek sekmenin ID'si.
-   * @param {string} name - Sekme için yeni ad.
+   * Updates the name of the tab with the specified ID.
+   * @param {string} tabId - The ID of the tab to update.
+   * @param {string} name - The new name for the tab.
    */
   updateTabName(tabId, name) {
     const tab = this.tabs.find(t => t.id === tabId);
@@ -190,10 +190,10 @@ export class TabManager {
   }
 
   /**
-   * İsteğe bağlı içerikle özel bir sekme oluşturur.
-   * @param {string} name - Sekme için ad.
-   * @param {HTMLElement} content - Sekmeye eklenecek içerik HTML öğesi.
-   * @returns {string} Oluşturulan yeni sekmenin ID'si.
+   * Creates a custom tab with optional content.
+   * @param {string} name - The name for the tab.
+   * @param {HTMLElement} content - The HTML content element to add to the tab.
+   * @returns {string} The ID of the newly created tab.
    */
   createCustomTab(name, content) {
     const tabId = `tab-${Date.now()}-${this.tabCounter++}`;
@@ -231,8 +231,8 @@ export class TabManager {
     });
     
     const contentElement = document.createElement('div');
-    contentElement.className = 'terminal-instance'; // Aynı stilin uygulanması için terminal-instance sınıfını kullanabilir
-    contentElement.id = `terminal-${tabId}`; // ID tutarlılığı için
+    contentElement.className = 'terminal-instance'; // May use terminal-instance class for consistent styling
+    contentElement.id = `terminal-${tabId}`; // For ID consistency
     
     if (content) {
       contentElement.appendChild(content);

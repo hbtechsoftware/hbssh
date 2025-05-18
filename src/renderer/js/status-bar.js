@@ -1,7 +1,7 @@
 /**
- * DOM içeriği tamamen yüklendiğinde durum çubuğu işlevlerini başlatır.
- * Gerekli DOM öğelerini alır, başlangıç durum metinlerini ayarlar ve
- * ana süreçten gelen uzak sistem bilgisi güncellemelerini ve temizleme olaylarını dinler.
+ * Initializes status bar functions when the DOM content is fully loaded.
+ * Gets necessary DOM elements, sets initial status texts, and
+ * listens for remote system information updates and clear events from the main process.
  */
 document.addEventListener('DOMContentLoaded', () => {
   const cpuElement = document.getElementById('cpuUsage');
@@ -9,8 +9,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const diskElement = document.getElementById('diskUsage');
 
   /**
-   * Durum çubuğundaki CPU, Bellek ve Disk kullanım bilgilerini
-   * varsayılan "N/A" (Not Available/Mevcut Değil) durumuna sıfırlar.
+   * Resets the CPU, Memory, and Disk usage information in the status bar
+   * to the default "N/A" (Not Available) state.
    */
   const setDefaultStatusText = () => {
     if (cpuElement) cpuElement.textContent = '💻 CPU: N/A';
@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   };
 
   if (!cpuElement || !memElement || !diskElement) {
-    console.error('Arayüz: Durum çubuğu elementlerinden biri (cpuUsage, memUsage, diskUsage) bulunamadı!');
+    console.error('UI: One of the status bar elements (cpuUsage, memUsage, diskUsage) not found!');
     return;
   }
 
@@ -28,29 +28,29 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDisplayingConnectionId = null;
 
   /**
-   * Ana süreçten `remote-system-info-update` olayı geldiğinde tetiklenir.
-   * Gelen verilerle (CPU, bellek, disk kullanımı) durum çubuğunu günceller.
-   * @param {Object} data - Uzak sistem bilgilerini içeren nesne.
-   * @param {string} data.connectionId - Bilginin ait olduğu bağlantının ID'si.
-   * @param {number} [data.cpu] - Sunucu CPU kullanım yüzdesi.
-   * @param {number} [data.mem] - Sunucu Bellek kullanım yüzdesi.
-   * @param {number} [data.memTotalMB] - Sunucudaki toplam bellek (MB).
-   * @param {number} [data.memUsedMB] - Sunucudaki kullanılan bellek (MB).
-   * @param {number} [data.disk] - Sunucu Disk kullanım yüzdesi.
-   * @param {number} [data.diskTotalMB] - Sunucudaki toplam disk alanı (MB).
-   * @param {number} [data.diskUsedMB] - Sunucudaki kullanılan disk alanı (MB).
+   * Triggered when the `remote-system-info-update` event is received from the main process.
+   * Updates the status bar with the received data (CPU, memory, disk usage).
+   * @param {Object} data - Object containing remote system information.
+   * @param {string} data.connectionId - The ID of the connection to which the information belongs.
+   * @param {number} [data.cpu] - Server CPU usage percentage.
+   * @param {number} [data.mem] - Server Memory usage percentage.
+   * @param {number} [data.memTotalMB] - Total memory on the server (MB).
+   * @param {number} [data.memUsedMB] - Used memory on the server (MB).
+   * @param {number} [data.disk] - Server Disk usage percentage.
+   * @param {number} [data.diskTotalMB] - Total disk space on the server (MB).
+   * @param {number} [data.diskUsedMB] - Used disk space on the server (MB).
    */
   if (window.api && window.api.onRemoteSystemInfoUpdate) {
-    console.log('Arayüz (DOM Hazır): Uzak sistem bilgisi olayına abone olunuyor.');
+    console.log('UI (DOM Ready): Subscribing to remote system info event.');
     
     window.api.onRemoteSystemInfoUpdate((data) => {
       currentDisplayingConnectionId = data.connectionId;
 
       if (cpuElement) {
         if (typeof data.cpu === 'number' && !isNaN(data.cpu)) {
-          cpuElement.textContent = `💻 Sunucu CPU: ${data.cpu.toFixed(1)}%`;
+          cpuElement.textContent = `💻 Server CPU: ${data.cpu.toFixed(1)}%`;
         } else {
-          cpuElement.textContent = '💻 Sunucu CPU: N/A';
+          cpuElement.textContent = '💻 Server CPU: N/A';
         }
       }
 
@@ -58,9 +58,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof data.mem === 'number' && !isNaN(data.mem) &&
             typeof data.memTotalMB === 'number' && !isNaN(data.memTotalMB) &&
             typeof data.memUsedMB === 'number' && !isNaN(data.memUsedMB)) {
-          memElement.textContent = `🧠 Sunucu MEM: ${data.mem.toFixed(1)}% (${data.memUsedMB}MB / ${data.memTotalMB}MB)`;
+          memElement.textContent = `🧠 Server MEM: ${data.mem.toFixed(1)}% (${data.memUsedMB}MB / ${data.memTotalMB}MB)`;
         } else {
-          memElement.textContent = '🧠 Sunucu MEM: N/A';
+          memElement.textContent = '🧠 Server MEM: N/A';
         }
       }
 
@@ -68,32 +68,32 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof data.disk === 'number' && !isNaN(data.disk) &&
             typeof data.diskTotalMB === 'number' && !isNaN(data.diskTotalMB) &&
             typeof data.diskUsedMB === 'number' && !isNaN(data.diskUsedMB)) {
-          diskElement.textContent = `💾 Sunucu Disk: ${data.disk}% (${data.diskUsedMB}MB / ${data.diskTotalMB}MB)`;
+          diskElement.textContent = `💾 Server Disk: ${data.disk}% (${data.diskUsedMB}MB / ${data.diskTotalMB}MB)`;
         } else {
-          diskElement.textContent = '💾 Sunucu Disk: N/A';
+          diskElement.textContent = '💾 Server Disk: N/A';
         }
       }
     });
   } else {
-    console.error('Arayüz (DOM Hazır): Uzak sistem bilgisi API (onRemoteSystemInfoUpdate) bulunamadı.');
+    console.error('UI (DOM Ready): Remote system info API (onRemoteSystemInfoUpdate) not found.');
     setDefaultStatusText();
   }
 
   /**
-   * Ana süreçten `clear-remote-system-info` olayı geldiğinde tetiklenir.
-   * Eğer temizleme olayı o an görüntülenen bağlantıya aitse, durum çubuğunu varsayılan metinlere sıfırlar.
-   * @param {Object} data - Temizleme olay verisini içeren nesne.
-   * @param {string} data.connectionId - Sistem bilgileri temizlenen bağlantının ID'si.
+   * Triggered when the `clear-remote-system-info` event is received from the main process.
+   * If the clear event belongs to the currently displayed connection, resets the status bar to default texts.
+   * @param {Object} data - Object containing the clear event data.
+   * @param {string} data.connectionId - The ID of the connection whose system information is cleared.
    */
   if (window.api && window.api.onClearRemoteSystemInfo) {
     window.api.onClearRemoteSystemInfo((data) => {
       if (data.connectionId === currentDisplayingConnectionId) {
-        console.log(`Arayüz: [${data.connectionId}] için uzak sistem bilgileri temizleniyor.`);
+        console.log(`UI: Clearing remote system info for [${data.connectionId}].`);
         setDefaultStatusText();
         currentDisplayingConnectionId = null;
       }
     });
   } else {
-    console.error('Arayüz (DOM Hazır): Uzak sistem bilgisi temizleme API (onClearRemoteSystemInfo) bulunamadı.');
+    console.error('UI (DOM Ready): Remote system info clear API (onClearRemoteSystemInfo) not found.');
   }
 }); 

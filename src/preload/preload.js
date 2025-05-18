@@ -4,224 +4,224 @@ const { contextBridge, ipcRenderer } = require('electron');
 // the ipcRenderer without exposing all of its APIs
 contextBridge.exposeInMainWorld('api', {
   /**
-   * Kayıtlı tüm SSH bağlantılarını alır.
-   * @returns {Promise<Array<Object>>} Bağlantı nesneleri dizisiyle çözümlenen bir Promise.
+   * Gets all saved SSH connections.
+   * @returns {Promise<Array<Object>>} A Promise that resolves with an array of connection objects.
    */
   getSavedConnections: () => ipcRenderer.invoke('get-saved-connections'),
 
   /**
-   * Yeni bir bağlantıyı kaydeder veya mevcut bir bağlantıyı günceller.
-   * @param {Object} connection - Kaydedilecek bağlantı nesnesi.
-   * @returns {Promise<Array<Object>>} Tüm bağlantıların güncellenmiş listesiyle çözümlenen bir Promise.
+   * Saves a new connection or updates an existing one.
+   * @param {Object} connection - The connection object to save.
+   * @returns {Promise<Array<Object>>} A Promise that resolves with the updated list of all connections.
    */
   saveConnection: (connection) => ipcRenderer.invoke('save-connection', connection),
 
   /**
-   * Belirtilen ID'ye sahip bağlantıyı siler.
-   * @param {string} connectionId - Silinecek bağlantının ID'si.
-   * @returns {Promise<Array<Object>>} Tüm bağlantıların güncellenmiş listesiyle çözümlenen bir Promise.
+   * Deletes the connection with the specified ID.
+   * @param {string} connectionId - The ID of the connection to delete.
+   * @returns {Promise<Array<Object>>} A Promise that resolves with the updated list of all connections.
    */
   deleteConnection: (connectionId) => ipcRenderer.invoke('delete-connection', connectionId),
   
   /**
-   * Belirtilen yapılandırmayla bir SSH bağlantısı kurar.
-   * @param {Object} connection - Bağlantı yapılandırma nesnesi.
-   * @returns {Promise<Object>} Bağlantı sonucuyla çözümlenen bir Promise.
+   * Establishes an SSH connection with the specified configuration.
+   * @param {Object} connection - The connection configuration object.
+   * @returns {Promise<Object>} A Promise that resolves with the connection result.
    */
   connectSSH: (connection) => ipcRenderer.invoke('connect-ssh', connection),
 
   /**
-   * Belirtilen SSH bağlantısına veri yazar.
-   * @param {string} connectionId - SSH bağlantısının ID'si.
-   * @param {string} data - Yazılacak veri.
-   * @returns {Promise<Object>} Yazma işleminin sonucuyla çözümlenen bir Promise.
+   * Writes data to the specified SSH connection.
+   * @param {string} connectionId - The ID of the SSH connection.
+   * @param {string} data - The data to write.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the write operation.
    */
   writeSSH: (connectionId, data) => ipcRenderer.invoke('write-ssh', connectionId, data),
 
   /**
-   * Belirtilen SSH bağlantısının terminal boyutunu yeniden boyutlandırır.
-   * @param {string} connectionId - SSH bağlantısının ID'si.
-   * @param {number} cols - Sütun sayısı.
-   * @param {number} rows - Satır sayısı.
-   * @returns {Promise<Object>} Yeniden boyutlandırma işleminin sonucuyla çözümlenen bir Promise.
+   * Resizes the terminal of the specified SSH connection.
+   * @param {string} connectionId - The ID of the SSH connection.
+   * @param {number} cols - The number of columns.
+   * @param {number} rows - The number of rows.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the resize operation.
    */
   resizeSSH: (connectionId, cols, rows) => ipcRenderer.invoke('resize-ssh', connectionId, cols, rows),
 
   /**
-   * Belirtilen SSH bağlantısını keser.
-   * @param {string} connectionId - Kesilecek SSH bağlantısının ID'si.
-   * @returns {Promise<Object>} Bağlantı kesme işleminin sonucuyla çözümlenen bir Promise.
+   * Disconnects the specified SSH connection.
+   * @param {string} connectionId - The ID of the SSH connection to disconnect.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the disconnection operation.
    */
   disconnectSSH: (connectionId) => ipcRenderer.invoke('disconnect-ssh', connectionId),
   
   /**
-   * Belirtilen yapılandırmayla bir SFTP bağlantısı kurar.
-   * @param {Object} connection - Bağlantı yapılandırma nesnesi.
-   * @returns {Promise<Object>} Bağlantı sonucuyla çözümlenen bir Promise.
+   * Establishes an SFTP connection with the specified configuration.
+   * @param {Object} connection - The connection configuration object.
+   * @returns {Promise<Object>} A Promise that resolves with the connection result.
    */
   connectSFTP: (connection) => ipcRenderer.invoke('connect-sftp', connection),
 
   /**
-   * Belirtilen SFTP bağlantısını keser.
-   * @param {string} connectionId - Kesilecek SFTP bağlantısının ID'si.
-   * @returns {Promise<Object>} Bağlantı kesme işleminin sonucuyla çözümlenen bir Promise.
+   * Disconnects the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection to disconnect.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the disconnection operation.
    */
   disconnectSFTP: (connectionId) => ipcRenderer.invoke('disconnect-sftp', connectionId),
 
   /**
-   * Belirtilen SFTP bağlantısındaki uzak bir dizinin içeriğini listeler.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Listelenecek uzak dizinin yolu.
-   * @returns {Promise<Object>} Dizin listeleme işleminin sonucuyla çözümlenen bir Promise.
+   * Lists the contents of a remote directory on the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote directory to list.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the directory listing operation.
    */
   sftpList: (connectionId, remotePath) => ipcRenderer.invoke('sftp-list', connectionId, remotePath),
 
   /**
-   * Belirtilen SFTP bağlantısında uzak bir dizin oluşturur.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Oluşturulacak uzak dizinin yolu.
-   * @param {string} sshConnectionId - İlişkili SSH bağlantısının ID'si (sudo işlemleri için).
-   * @returns {Promise<Object>} Dizin oluşturma işleminin sonucuyla çözümlenen bir Promise.
+   * Creates a remote directory on the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote directory to create.
+   * @param {string} sshConnectionId - The ID of the associated SSH connection (for sudo operations).
+   * @returns {Promise<Object>} A Promise that resolves with the result of the directory creation operation.
    */
   sftpMkdir: (connectionId, remotePath, sshConnectionId) => ipcRenderer.invoke('sftp-mkdir', { connectionId, remotePath, sshConnectionId }),
 
   /**
-   * Belirtilen SFTP bağlantısında uzak bir dosyayı siler.
-   * @param {string} sftpConnectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Silinecek uzak dosyanın yolu.
-   * @param {string} sshConnectionId - İlişkili SSH bağlantısının ID'si (sudo işlemleri için).
-   * @returns {Promise<Object>} Dosya silme işleminin sonucuyla çözümlenen bir Promise.
+   * Deletes a remote file on the specified SFTP connection.
+   * @param {string} sftpConnectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file to delete.
+   * @param {string} sshConnectionId - The ID of the associated SSH connection (for sudo operations).
+   * @returns {Promise<Object>} A Promise that resolves with the result of the file deletion operation.
    */
   sftpDelete: (sftpConnectionId, remotePath, sshConnectionId) => ipcRenderer.invoke('sftp-delete', { sftpConnectionId, remotePath, sshConnectionId }),
 
   /**
-   * Belirtilen SFTP bağlantısında uzak bir dizini (ve isteğe bağlı olarak içeriğini) siler.
-   * @param {string} sftpConnectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Silinecek uzak dizinin yolu.
-   * @param {boolean} recursive - İçeriğiyle birlikte özyinelemeli olarak silinip silinmeyeceği.
-   * @param {string} sshConnectionId - İlişkili SSH bağlantısının ID'si (sudo işlemleri için).
-   * @returns {Promise<Object>} Dizin silme işleminin sonucuyla çözümlenen bir Promise.
+   * Deletes a remote directory (and optionally its contents) on the specified SFTP connection.
+   * @param {string} sftpConnectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote directory to delete.
+   * @param {boolean} recursive - Whether to delete recursively with its contents.
+   * @param {string} sshConnectionId - The ID of the associated SSH connection (for sudo operations).
+   * @returns {Promise<Object>} A Promise that resolves with the result of the directory deletion operation.
    */
   sftpRmdir: (sftpConnectionId, remotePath, recursive, sshConnectionId) => ipcRenderer.invoke('sftp-rmdir', { sftpConnectionId, remotePath, recursive, sshConnectionId }),
 
   /**
-   * Belirtilen SFTP bağlantısında uzak bir dosyayı veya dizini yeniden adlandırır/taşır.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} fromPath - Kaynak dosya/dizin yolu.
-   * @param {string} toPath - Hedef dosya/dizin yolu.
-   * @param {string} sshConnectionId - İlişkili SSH bağlantısının ID'si.
-   * @returns {Promise<Object>} Yeniden adlandırma/taşıma işleminin sonucuyla çözümlenen bir Promise.
+   * Renames/moves a remote file or directory on the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} fromPath - The source file/directory path.
+   * @param {string} toPath - The target file/directory path.
+   * @param {string} sshConnectionId - The ID of the associated SSH connection.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the rename/move operation.
    */
   sftpRename: (connectionId, fromPath, toPath, sshConnectionId) => ipcRenderer.invoke('sftp-rename', { connectionId, fromPath, toPath, sshConnectionId }),
 
   /**
-   * Belirtilen SFTP bağlantısından uzak bir dosyayı yerel bir yola indirir.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - İndirilecek uzak dosyanın yolu.
-   * @param {string} localPath - Dosyanın kaydedileceği yerel yol.
-   * @returns {Promise<Object>} İndirme işleminin sonucuyla çözümlenen bir Promise.
+   * Downloads a remote file from the specified SFTP connection to a local path.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file to download.
+   * @param {string} localPath - The local path where the file will be saved.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the download operation.
    */
   sftpDownload: (connectionId, remotePath, localPath) => ipcRenderer.invoke('sftp-download', connectionId, remotePath, localPath),
 
   /**
-   * Yerel bir dosyayı belirtilen SFTP bağlantısındaki uzak bir yola yükler.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} localPath - Yüklenecek yerel dosyanın yolu.
-   * @param {string} remotePath - Dosyanın yükleneceği uzak yol.
-   * @returns {Promise<Object>} Yükleme işleminin sonucuyla çözümlenen bir Promise.
+   * Uploads a local file to a remote path on the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} localPath - The path of the local file to upload.
+   * @param {string} remotePath - The remote path where the file will be uploaded.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the upload operation.
    */
   sftpUpload: (connectionId, localPath, remotePath) => ipcRenderer.invoke('sftp-upload', connectionId, localPath, remotePath),
 
   /**
-   * Belirtilen transfer ID'sine sahip bir SFTP transferinin durumunu alır.
-   * @param {string} transferId - Transferin ID'si.
-   * @returns {Promise<Object>} Transfer durumuyla çözümlenen bir Promise.
+   * Gets the status of an SFTP transfer with the specified transfer ID.
+   * @param {string} transferId - The ID of the transfer.
+   * @returns {Promise<Object>} A Promise that resolves with the transfer status.
    */
   sftpGetTransferStatus: (transferId) => ipcRenderer.invoke('sftp-get-transfer-status', transferId),
 
   /**
-   * Belirtilen transfer ID'sine sahip bir SFTP transferini iptal eder.
-   * @param {string} transferId - Transferin ID'si.
-   * @returns {Promise<Object>} İptal işleminin sonucuyla çözümlenen bir Promise.
+   * Cancels an SFTP transfer with the specified transfer ID.
+   * @param {string} transferId - The ID of the transfer.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the cancel operation.
    */
   sftpCancelTransfer: (transferId) => ipcRenderer.invoke('sftp-cancel-transfer', transferId),
 
   /**
-   * Belirtilen SFTP bağlantısı için mevcut çalışma dizinini alır.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @returns {Promise<Object>} Mevcut çalışma diziniyle çözümlenen bir Promise.
+   * Gets the current working directory for the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @returns {Promise<Object>} A Promise that resolves with the current working directory.
    */
   sftpGetCurrentDirectory: (connectionId) => ipcRenderer.invoke('sftp-get-current-directory', connectionId),
 
   /**
-   * Belirtilen SFTP bağlantısı için mevcut çalışma dizinini ayarlar.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Ayarlanacak yeni çalışma dizininin yolu.
-   * @returns {Promise<Object>} İşlemin sonucuyla çözümlenen bir Promise.
+   * Sets the current working directory for the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The new working directory path to set.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the operation.
    */
   sftpSetCurrentDirectory: (connectionId, remotePath) => ipcRenderer.invoke('sftp-set-current-directory', connectionId, remotePath),
 
   /**
-   * Belirtilen SFTP bağlantısındaki uzak bir dosya veya dizinin bilgilerini (stat) alır.
-   * @param {string} connectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Bilgileri alınacak uzak dosya/dizin yolu.
-   * @returns {Promise<Object>} Dosya/dizin bilgileriyle çözümlenen bir Promise.
+   * Gets information (stat) about a remote file or directory on the specified SFTP connection.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file/directory to get information about.
+   * @returns {Promise<Object>} A Promise that resolves with the file/directory information.
    */
   sftpStat: (connectionId, remotePath) => ipcRenderer.invoke('sftp-stat', connectionId, remotePath),
   
   /**
-   * Bir dosya açma iletişim kutusu gösterir.
-   * @param {Object} options - Elektron'un `dialog.showOpenDialog` metodunun seçenekleri.
-   * @returns {Promise<Object>} Dosya seçimi sonucuyla çözümlenen bir Promise.
+   * Shows an open file dialog.
+   * @param {Object} options - Options for Electron's `dialog.showOpenDialog` method.
+   * @returns {Promise<Object>} A Promise that resolves with the file selection result.
    */
   openFileDialog: (options) => ipcRenderer.invoke('open-file-dialog', options),
 
   /**
-   * Bir dosya kaydetme iletişim kutusu gösterir.
-   * @param {Object} options - Elektron'un `dialog.showSaveDialog` metodunun seçenekleri.
-   * @returns {Promise<Object>} Dosya kaydetme sonucuyla çözümlenen bir Promise.
+   * Shows a save file dialog.
+   * @param {Object} options - Options for Electron's `dialog.showSaveDialog` method.
+   * @returns {Promise<Object>} A Promise that resolves with the file saving result.
    */
   saveFileDialog: (options) => ipcRenderer.invoke('save-file-dialog', options),
 
   /**
-   * Kullanıcının ev dizininin yolunu alır.
-   * @returns {Promise<string>} Ev dizini yoluyla çözümlenen bir Promise.
+   * Gets the path to the user's home directory.
+   * @returns {Promise<string>} A Promise that resolves with the home directory path.
    */
   getHomePath: () => ipcRenderer.invoke('get-home-path'),
   
   /**
-   * Bir mesaj iletişim kutusu gösterir.
-   * @param {Object} options - Elektron'un `dialog.showMessageBox` metodunun seçenekleri.
-   * @returns {Promise<Object>} Mesaj kutusu sonucuyla çözümlenen bir Promise.
+   * Shows a message dialog.
+   * @param {Object} options - Options for Electron's `dialog.showMessageBox` method.
+   * @returns {Promise<Object>} A Promise that resolves with the message box result.
    */
   showMessage: (options) => ipcRenderer.invoke('show-message', options),
 
   /**
-   * Bir onay iletişim kutusu gösterir.
-   * @param {Object} options - Elektron'un `dialog.showMessageBox` metodunun seçenekleri (genellikle type: 'question').
-   * @returns {Promise<Object>} Onay kutusu sonucuyla çözümlenen bir Promise.
+   * Shows a confirmation dialog.
+   * @param {Object} options - Options for Electron's `dialog.showMessageBox` method (usually type: 'question').
+   * @returns {Promise<Object>} A Promise that resolves with the confirmation box result.
    */
   showConfirmDialog: (options) => ipcRenderer.invoke('show-confirm-dialog', options),
   
   /**
-   * Panodan metin okur.
-   * @returns {Promise<string>} Panodaki metinle çözümlenen bir Promise.
+   * Reads text from the clipboard.
+   * @returns {Promise<string>} A Promise that resolves with the text from the clipboard.
    */
   readClipboard: () => ipcRenderer.invoke('read-clipboard'),
 
   /**
-   * Panoya metin yazar.
-   * @param {string} text - Panoya yazılacak metin.
-   * @returns {Promise<void>} İşlem tamamlandığında çözümlenen bir Promise.
+   * Writes text to the clipboard.
+   * @param {string} text - The text to write to the clipboard.
+   * @returns {Promise<void>} A Promise that resolves when the operation is complete.
    */
   writeClipboard: (text) => ipcRenderer.invoke('write-clipboard', text),
   
   /**
-   * Ana süreçten gelen SSH verilerini dinler.
-   * @param {function(connectionId: string, data: string): void} callback - SSH verisi alındığında çağrılır.
-   *   - {string} connectionId - SSH bağlantısının ID'si.
-   *   - {string} data - SSH bağlantısından alınan veri.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for SSH data from the main process.
+   * @param {function(connectionId: string, data: string): void} callback - Called when SSH data is received.
+   *   - {string} connectionId - The ID of the SSH connection.
+   *   - {string} data - The data received from the SSH connection.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onSSHData: (callback) => {
     ipcRenderer.on('ssh-data', (event, connectionId, data) => callback(connectionId, data));
@@ -229,10 +229,10 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * Bir SSH bağlantısının kapandığını dinler.
-   * @param {function(connectionId: string): void} callback - Bir SSH bağlantısı kapandığında çağrılır.
-   *   - {string} connectionId - Kapanan SSH bağlantısının ID'si.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for an SSH connection close.
+   * @param {function(connectionId: string): void} callback - Called when an SSH connection is closed.
+   *   - {string} connectionId - The ID of the closed SSH connection.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onSSHClose: (callback) => {
     ipcRenderer.on('ssh-close', (event, connectionId) => callback(connectionId));
@@ -240,11 +240,11 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * SSH bağlantı hatalarını dinler.
-   * @param {function(connectionId: string, error: Error): void} callback - Bir SSH bağlantı hatası oluştuğunda çağrılır.
-   *   - {string} connectionId - Hatanın oluştuğu SSH bağlantısının ID'si.
-   *   - {Error} error - Hata nesnesi.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for SSH connection errors.
+   * @param {function(connectionId: string, error: Error): void} callback - Called when an SSH connection error occurs.
+   *   - {string} connectionId - The ID of the SSH connection where the error occurred.
+   *   - {Error} error - The error object.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onSSHError: (callback) => {
     ipcRenderer.on('ssh-error', (event, connectionId, error) => callback(connectionId, error));
@@ -252,11 +252,11 @@ contextBridge.exposeInMainWorld('api', {
   },
   
   /**
-   * SFTP transfer güncellemelerini dinler.
-   * @param {function(transferId: string, transfer: Object): void} callback - Bir SFTP transferi güncellendiğinde çağrılır.
-   *   - {string} transferId - Transferin ID'si.
-   *   - {Object} transfer - Transfer durumu nesnesi.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for SFTP transfer updates.
+   * @param {function(transferId: string, transfer: Object): void} callback - Called when an SFTP transfer is updated.
+   *   - {string} transferId - The ID of the transfer.
+   *   - {Object} transfer - The transfer status object.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onSFTPTransferUpdate: (callback) => {
     ipcRenderer.on('sftp-transfer-update', (event, transferId, transfer) => callback(transferId, transfer));
@@ -264,9 +264,9 @@ contextBridge.exposeInMainWorld('api', {
   },
   
   /**
-   * Menüden 'Yeni Bağlantı' eylemini dinler.
-   * @param {function(): void} callback - Eylem tetiklendiğinde çağrılır.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for the 'New Connection' action from the menu.
+   * @param {function(): void} callback - Called when the action is triggered.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onNewConnection: (callback) => {
     ipcRenderer.on('menu-new-connection', callback);
@@ -274,9 +274,9 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * Menüden 'Yeni Sekme' eylemini dinler.
-   * @param {function(): void} callback - Eylem tetiklendiğinde çağrılır.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for the 'New Tab' action from the menu.
+   * @param {function(): void} callback - Called when the action is triggered.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onNewTab: (callback) => {
     ipcRenderer.on('menu-new-tab', callback);
@@ -284,9 +284,9 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * Menüden 'Hakkında' eylemini dinler.
-   * @param {function(): void} callback - Eylem tetiklendiğinde çağrılır.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for the 'About' action from the menu.
+   * @param {function(): void} callback - Called when the action is triggered.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onAbout: (callback) => {
     ipcRenderer.on('menu-about', callback);
@@ -294,22 +294,22 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * Uzak sunucu sistem bilgisi güncellemelerini dinler.
-   * @param {function(data: Object): void} callback - Sistem bilgisi güncellendiğinde çağrılır.
-   *   - {Object} data - Güncellenmiş sistem bilgisi verileri.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for remote server system information updates.
+   * @param {function(data: Object): void} callback - Called when system information is updated.
+   *   - {Object} data - The updated system information data.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onRemoteSystemInfoUpdate: (callback) => {
     ipcRenderer.on('remote-system-info-update', (event, value) => callback(value));
-    // Kaldırma fonksiyonunu da döndürmek iyi bir pratiktir, bileşen kaldırıldığında dinleyiciyi temizlemek için.
+    // It's good practice to also return the unbind function to clean up the listener when the component unmounts.
     return () => ipcRenderer.removeListener('remote-system-info-update', callback);
   },
 
   /**
-   * Uzak sunucu sistem bilgilerinin temizlenmesi olayını dinler.
-   * @param {function(data: Object): void} callback - Sistem bilgileri temizlendiğinde çağrılır.
-   *   - {Object} data - Genellikle { connectionId: string } içerir.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for the event to clear remote server system information.
+   * @param {function(data: Object): void} callback - Called when system information is cleared.
+   *   - {Object} data - Usually contains { connectionId: string }.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onClearRemoteSystemInfo: (callback) => {
     ipcRenderer.on('clear-remote-system-info', (event, value) => callback(value));
@@ -317,10 +317,10 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * SFTP tarayıcısının hazır olduğunu belirten olayı dinler.
-   * @param {function(data: Object): void} callback - SFTP hazır olduğunda çağrılır.
-   *   - {Object} data - SFTP bağlantı bilgileri (sshConnectionId, sftpConnectionId, initialPath).
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for the event indicating that the SFTP browser is ready.
+   * @param {function(data: Object): void} callback - Called when SFTP is ready.
+   *   - {Object} data - SFTP connection info (sshConnectionId, sftpConnectionId, initialPath).
+   * @returns {function(): void} A function to remove the event listener.
    */
   onSftpReady: (callback) => {
     ipcRenderer.on('sftp-ready', (event, data) => callback(data));
@@ -328,10 +328,10 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * SFTP bağlantısının kapandığını belirten olayı dinler.
-   * @param {function(data: Object): void} callback - SFTP kapandığında çağrılır.
-   *   - {Object} data - Kapanma nedeni ve bağlantı ID'leri hakkında bilgi.
-   * @returns {function(): void} Olay dinleyicisini kaldırmak için bir fonksiyon.
+   * Listens for the event indicating that the SFTP connection has closed.
+   * @param {function(data: Object): void} callback - Called when SFTP is closed.
+   *   - {Object} data - Information about the reason for closing and connection IDs.
+   * @returns {function(): void} A function to remove the event listener.
    */
   onSftpClose: (callback) => {
     ipcRenderer.on('sftp-close', (event, data) => callback(data));
@@ -339,20 +339,20 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
-   * Belirtilen SFTP bağlantısındaki uzak bir dosyayı okur.
-   * @param {string} sftpConnectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - Okunacak uzak dosyanın yolu.
-   * @returns {Promise<Object>} Dosya içeriği veya hata ile çözümlenen bir Promise.
+   * Reads a remote file on the specified SFTP connection.
+   * @param {string} sftpConnectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file to read.
+   * @returns {Promise<Object>} A Promise that resolves with the file content or an error.
    */
   sftpReadFile: (sftpConnectionId, remotePath) => ipcRenderer.invoke('sftp-read-file', { connectionId: sftpConnectionId, remoteFilePath: remotePath }),
 
   /**
-   * Belirtilen SFTP bağlantısındaki uzak bir dosyaya içerik yazar.
-   * @param {string} sftpConnectionId - SFTP bağlantısının ID'si.
-   * @param {string} remotePath - İçeriğin yazılacağı uzak dosyanın yolu.
-   * @param {string} content - Yazılacak içerik.
-   * @param {string} [sshConnectionId] - İlişkili SSH bağlantısının ID'si (güncel main.js'de bu parametre `sftp-write-file` handler'ı tarafından alınır).
-   * @returns {Promise<Object>} Yazma işleminin sonucuyla çözümlenen bir Promise.
+   * Writes content to a remote file on the specified SFTP connection.
+   * @param {string} sftpConnectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file to write content to.
+   * @param {string} content - The content to write.
+   * @param {string} [sshConnectionId] - The ID of the associated SSH connection (this parameter is received by the `sftp-write-file` handler in the current main.js).
+   * @returns {Promise<Object>} A Promise that resolves with the result of the write operation.
    */
   sftpWriteFile: (sftpConnectionId, remotePath, content, sshConnectionId) => ipcRenderer.invoke('sftp-write-file', { connectionId: sftpConnectionId, remoteFilePath: remotePath, content, sshConnectionId })
 }); 
