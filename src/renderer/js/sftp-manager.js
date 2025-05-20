@@ -1,7 +1,15 @@
 /**
- * Manages SFTP connections and file operations
+ * Manages SFTP connections and file operations.
+ * This class provides essential methods for interacting with SFTP servers:
+ * connecting, disconnecting, listing directories, creating/deleting/renaming files/directories,
+ * downloading/uploading files, and managing transfer statuses.
  */
 export class SFTPManager {
+  /**
+   * Creates a new instance of the SFTPManager class.
+   * Initializes internal structures for storing connections, transfers, and current directories.
+   * Binds methods to the `this` context and registers event listeners.
+   */
   constructor() {
     this.connections = {};
     this.activeConnectionId = null;
@@ -25,9 +33,15 @@ export class SFTPManager {
   }
   
   /**
-   * Connect to an SFTP server
-   * @param {Object} connection - Connection configuration
-   * @returns {Promise<string>} Connection ID
+   * Connects to an SFTP server.
+   * @param {Object} connection - The connection configuration object.
+   * @param {string} connection.host - The server address.
+   * @param {number} connection.port - The server port.
+   * @param {string} connection.username - The username.
+   * @param {string} [connection.password] - The password (optional).
+   * @param {string} [connection.privateKey] - The path to the private key (optional).
+   * @returns {Promise<string>} A Promise that resolves with the connection ID on successful connection.
+   * @throws {Error} Throws an error if the connection fails or an API error occurs.
    */
   async connect(connection) {
     try {
@@ -58,9 +72,9 @@ export class SFTPManager {
   }
   
   /**
-   * Disconnect from an SFTP server
-   * @param {string} connectionId - Connection ID
-   * @returns {Promise<void>}
+   * Disconnects from an SFTP server.
+   * @param {string} connectionId - The ID of the connection to disconnect.
+   * @returns {Promise<void>} A Promise that resolves when the operation is complete.
    */
   async disconnect(connectionId) {
     try {
@@ -80,16 +94,16 @@ export class SFTPManager {
   }
   
   /**
-   * Get active connection
-   * @returns {string|null} Active connection ID or null if none
+   * Gets the ID of the active SFTP connection.
+   * @returns {string|null} The active connection ID, or `null` if there is no active connection.
    */
   getActiveConnection() {
     return this.activeConnectionId;
   }
   
   /**
-   * Set active connection
-   * @param {string} connectionId - Connection ID
+   * Sets the active SFTP connection.
+   * @param {string} connectionId - The ID of the connection to set as active.
    */
   setActiveConnection(connectionId) {
     if (this.connections[connectionId]) {
@@ -98,19 +112,21 @@ export class SFTPManager {
   }
   
   /**
-   * Get current directory for a connection
-   * @param {string} connectionId - Connection ID
-   * @returns {string} Current directory
+   * Gets the current working directory for the specified connection.
+   * @param {string} connectionId - The connection ID.
+   * @returns {string} The path of the current working directory, defaults to '/'.
    */
   getCurrentDirectory(connectionId) {
     return this.currentDirectories[connectionId] || '/';
   }
   
   /**
-   * List directory contents
-   * @param {string} connectionId - Connection ID
-   * @param {string} remotePath - Remote directory path
-   * @returns {Promise<Array>} Directory listing
+   * Lists the contents of a remote directory.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote directory to list.
+   * @returns {Promise<Array<Object>>} A Promise that resolves with an array of objects representing the directory contents.
+   *                                  Each object typically includes properties like `name`, `type`, `size`, `modifyTime`.
+   * @throws {Error} Throws an error if listing fails or an API error occurs.
    */
   async listDirectory(connectionId, remotePath) {
     try {
@@ -130,14 +146,16 @@ export class SFTPManager {
   }
   
   /**
-   * Create a new directory
-   * @param {string} connectionId - Connection ID
-   * @param {string} remotePath - Remote directory path
-   * @returns {Promise<void>}
+   * Creates a new directory on the remote server.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The remote path of the directory to create.
+   * @param {string} [sshConnectionId] - The SSH connection ID to pass to the `sftp-mkdir` handler in `main.js` (optional, may be needed for sudo).
+   * @returns {Promise<void>} Resolves if the operation is successful.
+   * @throws {Error} Throws an error if directory creation fails or an API error occurs.
    */
-  async createDirectory(connectionId, remotePath) {
+  async createDirectory(connectionId, remotePath, sshConnectionId) {
     try {
-      const result = await window.api.sftpMkdir(connectionId, remotePath);
+      const result = await window.api.sftpMkdir(connectionId, remotePath, sshConnectionId);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -148,14 +166,16 @@ export class SFTPManager {
   }
   
   /**
-   * Delete a file
-   * @param {string} connectionId - Connection ID
-   * @param {string} remotePath - Remote file path
-   * @returns {Promise<void>}
+   * Deletes a file on the remote server.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The remote path of the file to delete.
+   * @param {string} [sshConnectionId] - The SSH connection ID to pass to the `sftp-delete` handler in `main.js` (optional, may be needed for sudo).
+   * @returns {Promise<void>} Resolves if the operation is successful.
+   * @throws {Error} Throws an error if file deletion fails or an API error occurs.
    */
-  async deleteFile(connectionId, remotePath) {
+  async deleteFile(connectionId, remotePath, sshConnectionId) {
     try {
-      const result = await window.api.sftpDelete(connectionId, remotePath);
+      const result = await window.api.sftpDelete(connectionId, remotePath, sshConnectionId);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -166,15 +186,17 @@ export class SFTPManager {
   }
   
   /**
-   * Delete a directory
-   * @param {string} connectionId - Connection ID
-   * @param {string} remotePath - Remote directory path
-   * @param {boolean} recursive - Whether to delete recursively
-   * @returns {Promise<void>}
+   * Deletes a directory on the remote server.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The remote path of the directory to delete.
+   * @param {boolean} [recursive=false] - Whether to delete the directory recursively with its contents.
+   * @param {string} [sshConnectionId] - The SSH connection ID to pass to the `sftp-rmdir` handler in `main.js` (optional, may be needed for sudo).
+   * @returns {Promise<void>} Resolves if the operation is successful.
+   * @throws {Error} Throws an error if directory deletion fails or an API error occurs.
    */
-  async deleteDirectory(connectionId, remotePath, recursive = false) {
+  async deleteDirectory(connectionId, remotePath, recursive = false, sshConnectionId) {
     try {
-      const result = await window.api.sftpRmdir(connectionId, remotePath, recursive);
+      const result = await window.api.sftpRmdir(connectionId, remotePath, recursive, sshConnectionId);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -185,15 +207,17 @@ export class SFTPManager {
   }
   
   /**
-   * Rename a file or directory
-   * @param {string} connectionId - Connection ID
-   * @param {string} fromPath - Source path
-   * @param {string} toPath - Destination path
-   * @returns {Promise<void>}
+   * Renames/moves a file or directory on the remote server.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} fromPath - The source file/directory path.
+   * @param {string} toPath - The target file/directory path.
+   * @param {string} [sshConnectionId] - The SSH connection ID to pass to the `sftp-rename` handler in `main.js` (optional).
+   * @returns {Promise<void>} Resolves if the operation is successful.
+   * @throws {Error} Throws an error if renaming fails or an API error occurs.
    */
-  async renameItem(connectionId, fromPath, toPath) {
+  async renameItem(connectionId, fromPath, toPath, sshConnectionId) {
     try {
-      const result = await window.api.sftpRename(connectionId, fromPath, toPath);
+      const result = await window.api.sftpRename(connectionId, fromPath, toPath, sshConnectionId);
       
       if (!result.success) {
         throw new Error(result.error);
@@ -204,11 +228,12 @@ export class SFTPManager {
   }
   
   /**
-   * Download a file
-   * @param {string} connectionId - Connection ID
-   * @param {string} remotePath - Remote file path
-   * @param {string} localPath - Local file path
-   * @returns {Promise<string>} Transfer ID
+   * Downloads a remote file to a local path.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file to download.
+   * @param {string} localPath - The local path where the file will be saved.
+   * @returns {Promise<string>} A Promise that resolves with the transfer ID on successful initiation.
+   * @throws {Error} Throws an error if download initiation fails or an API error occurs.
    */
   async downloadFile(connectionId, remotePath, localPath) {
     try {
@@ -237,15 +262,20 @@ export class SFTPManager {
   }
   
   /**
-   * Upload a file
-   * @param {string} connectionId - Connection ID
-   * @param {string} localPath - Local file path
-   * @param {string} remotePath - Remote file path
-   * @returns {Promise<string>} Transfer ID
+   * Uploads a local file to a remote path.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} localPath - The path of the local file to upload.
+   * @param {string} remotePath - The remote path where the file will be uploaded.
+   * @param {string} [sshConnectionId] - The SSH connection ID to pass to the `sftp-upload` (or indirectly `sftp-write-file`) handler in `main.js` (optional, may be needed for sudo).
+   * @returns {Promise<string>} A Promise that resolves with the transfer ID on successful initiation.
+   * @throws {Error} Throws an error if upload initiation fails or an API error occurs.
    */
-  async uploadFile(connectionId, localPath, remotePath) {
+  async uploadFile(connectionId, localPath, remotePath, sshConnectionId) {
     try {
-      const result = await window.api.sftpUpload(connectionId, localPath, remotePath);
+      // The sftpUpload API might not directly take sshConnectionId; it might use infrastructure like sftpWriteFile instead.
+      // So, one should check the sftpUpload definition in preload.js.
+      // For now, we add it assuming sshConnectionId might be needed if file creation/overwrite in main.js is done with sudo.
+      const result = await window.api.sftpUpload(connectionId, localPath, remotePath, sshConnectionId);
       
       if (result.success) {
         const transferId = result.transferId;
@@ -270,9 +300,9 @@ export class SFTPManager {
   }
   
   /**
-   * Cancel a transfer
-   * @param {string} transferId - Transfer ID
-   * @returns {Promise<boolean>} Whether the transfer was cancelled
+   * Cancels an ongoing file transfer.
+   * @param {string} transferId - The ID of the transfer to cancel.
+   * @returns {Promise<boolean>} A Promise that resolves with `true` if the operation is successful, `false` otherwise.
    */
   async cancelTransfer(transferId) {
     try {
@@ -295,10 +325,11 @@ export class SFTPManager {
   }
   
   /**
-   * Get file info
-   * @param {string} connectionId - Connection ID
-   * @param {string} remotePath - Remote file path
-   * @returns {Promise<Object>} File info
+   * Gets information (stat) about a remote file or directory.
+   * @param {string} connectionId - The ID of the SFTP connection.
+   * @param {string} remotePath - The path of the remote file/directory to get information about.
+   * @returns {Promise<Object>} A Promise that resolves with an object containing file/directory information (e.g., size, permissions, modification time).
+   * @throws {Error} Throws an error if getting information fails or an API error occurs.
    */
   async getFileInfo(connectionId, remotePath) {
     try {
@@ -315,26 +346,28 @@ export class SFTPManager {
   }
   
   /**
-   * Get all active transfers
-   * @returns {Object} Transfers object with transfer IDs as keys
+   * Gets a list of all active file transfers.
+   * @returns {Object<string, Object>} An object containing transfer IDs as keys and transfer details as values.
+   *                                   Each transfer object includes information like `type`, `connectionId`, `remotePath`, `localPath`, `status`, `progress`.
    */
   getTransfers() {
     return this.transfers;
   }
   
   /**
-   * Get a specific transfer
-   * @param {string} transferId - Transfer ID
-   * @returns {Object|null} Transfer object or null if not found
+   * Gets the details of a file transfer with a specific ID.
+   * @param {string} transferId - The ID of the transfer to get.
+   * @returns {Object|null} The transfer object, or `null` if not found.
    */
   getTransfer(transferId) {
     return this.transfers[transferId] || null;
   }
   
   /**
-   * Handle transfer update event
-   * @param {string} transferId - Transfer ID
-   * @param {Object} transfer - Transfer object
+   * Handles `sftp-transfer-update` events from the main process.
+   * Updates the local transfer status and triggers an `sftp-transfer-update` custom event.
+   * @param {string} transferId - The ID of the updated transfer.
+   * @param {Object} transfer - The object containing updated transfer information.
    */
   handleTransferUpdate(transferId, transfer) {
     // Update local transfer
@@ -357,7 +390,8 @@ export class SFTPManager {
   }
   
   /**
-   * Close all SFTP connections
+   * Closes all active SFTP connections.
+   * @returns {Promise<void>} A Promise that resolves when all connections are disconnected.
    */
   async closeAll() {
     const connectionIds = Object.keys(this.connections);

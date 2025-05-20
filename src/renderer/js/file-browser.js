@@ -14,7 +14,6 @@ export class FileBrowser {
     this.clipboard = null;
     this.isLoading = false;
     
-    // DOM elements
     this.container = null;
     this.pathBar = null;
     this.fileList = null;
@@ -22,7 +21,6 @@ export class FileBrowser {
     this.toolbar = null;
     this.transfersContainer = null;
     
-    // Bind methods
     this.init = this.init.bind(this);
     this.createUI = this.createUI.bind(this);
     this.connect = this.connect.bind(this);
@@ -43,7 +41,6 @@ export class FileBrowser {
     this.uploadFiles = this.uploadFiles.bind(this);
     this.downloadSelectedItems = this.downloadSelectedItems.bind(this);
     
-    // Listen for transfer updates
     document.addEventListener('sftp-transfer-update', (event) => {
       this.handleTransferUpdate(event.detail.transferId, event.detail.transfer);
     });
@@ -64,10 +61,8 @@ export class FileBrowser {
    * Create the UI elements
    */
   createUI() {
-    // Clear container
     this.container.innerHTML = '';
     
-    // Create toolbar
     this.toolbar = document.createElement('div');
     this.toolbar.className = 'file-browser-toolbar';
     
@@ -89,31 +84,25 @@ export class FileBrowser {
       this.toolbar.appendChild(button);
     });
     
-    // Create path bar
     this.pathBar = document.createElement('div');
     this.pathBar.className = 'file-browser-path';
     
-    // Create file list
     this.fileList = document.createElement('div');
     this.fileList.className = 'file-browser-list';
     
-    // Create status bar
     this.statusBar = document.createElement('div');
     this.statusBar.className = 'file-browser-status';
     this.statusBar.textContent = 'Not connected';
     
-    // Create transfers container
     this.transfersContainer = document.createElement('div');
     this.transfersContainer.className = 'file-browser-transfers';
     
-    // Add elements to container
     this.container.appendChild(this.toolbar);
     this.container.appendChild(this.pathBar);
     this.container.appendChild(this.fileList);
     this.container.appendChild(this.statusBar);
     this.container.appendChild(this.transfersContainer);
     
-    // Set initial state
     this.renderPathBar();
     this.renderFileList();
   }
@@ -128,19 +117,14 @@ export class FileBrowser {
       this.isLoading = true;
       this.updateStatusBar('Connecting...');
       
-      // Connect to the server
       const connectionId = await this.sftpManager.connect(connection);
       
-      // Store connection ID
       this.currentConnection = connectionId;
       
-      // Reset path
       this.currentPath = '/';
       
-      // Clear selection
       this.selectedItems.clear();
       
-      // Load root directory
       await this.loadPath('/');
       
       this.isLoading = false;
@@ -186,16 +170,12 @@ export class FileBrowser {
       this.isLoading = true;
       this.updateStatusBar('Loading...v1');
       
-      // List directory contents
       const files = await this.sftpManager.listDirectory(this.currentConnection, path);
       
-      // Update current path
       this.currentPath = path;
       
-      // Clear selection
       this.selectedItems.clear();
       
-      // Update UI
       this.renderPathBar();
       this.renderFileList(files);
       
@@ -212,10 +192,8 @@ export class FileBrowser {
    * @param {Array} files - List of files to render
    */
   renderFileList(files = []) {
-    // Clear the file list
     this.fileList.innerHTML = '';
     
-    // If not connected, show message
     if (!this.currentConnection) {
       const message = document.createElement('div');
       message.className = 'file-browser-message';
@@ -224,7 +202,6 @@ export class FileBrowser {
       return;
     }
     
-    // If loading, show loading indicator
     if (this.isLoading) {
       const loading = document.createElement('div');
       loading.className = 'file-browser-loading';
@@ -233,7 +210,6 @@ export class FileBrowser {
       return;
     }
     
-    // If in a non-root directory, add parent directory item
     if (this.currentPath !== '/') {
       const parentItem = document.createElement('div');
       parentItem.className = 'file-item parent-dir';
@@ -248,14 +224,12 @@ export class FileBrowser {
       this.fileList.appendChild(parentItem);
     }
     
-    // Sort files: directories first, then alphabetically
     const sortedFiles = [...files].sort((a, b) => {
       if (a.isDirectory && !b.isDirectory) return -1;
       if (!a.isDirectory && b.isDirectory) return 1;
       return a.name.localeCompare(b.name);
     });
     
-    // Add file items
     sortedFiles.forEach(file => {
       const fileItem = document.createElement('div');
       fileItem.className = 'file-item';
@@ -263,7 +237,6 @@ export class FileBrowser {
       fileItem.dataset.name = file.name;
       fileItem.dataset.type = file.isDirectory ? 'directory' : 'file';
       
-      // Set icon based on type
       let icon = '📄';
       if (file.isDirectory) {
         icon = '📁';
@@ -271,12 +244,10 @@ export class FileBrowser {
         icon = '🔗';
       }
       
-      // Check if item is selected
       if (this.selectedItems.has(fileItem.dataset.path)) {
         fileItem.classList.add('selected');
       }
       
-      // Create file item content
       fileItem.innerHTML = `
         <div class="file-icon">${icon}</div>
         <div class="file-name">${file.name}</div>
@@ -284,12 +255,10 @@ export class FileBrowser {
         <div class="file-date">${new Date(file.modifyTime).toLocaleString()}</div>
       `;
       
-      // Add event listeners
       fileItem.addEventListener('click', (event) => this.handleItemClick(event, fileItem));
       fileItem.addEventListener('dblclick', () => this.handleItemDoubleClick(fileItem));
       fileItem.addEventListener('contextmenu', (event) => this.handleItemContextMenu(event, fileItem));
       
-      // Add drag and drop functionality for files
       if (!file.isDirectory) {
         fileItem.draggable = true;
         fileItem.addEventListener('dragstart', (event) => {
@@ -301,7 +270,6 @@ export class FileBrowser {
       this.fileList.appendChild(fileItem);
     });
     
-    // If no files, show empty message
     if (files.length === 0 && this.currentPath === '/') {
       const emptyMessage = document.createElement('div');
       emptyMessage.className = 'file-browser-message';
@@ -314,19 +282,15 @@ export class FileBrowser {
    * Render the path bar
    */
   renderPathBar() {
-    // Clear the path bar
     this.pathBar.innerHTML = '';
     
-    // If not connected, show message
     if (!this.currentConnection) {
       this.pathBar.textContent = 'Not connected';
       return;
     }
     
-    // Split path into segments
     const pathSegments = this.currentPath.split('/').filter(segment => segment !== '');
     
-    // Add root element
     const rootElement = document.createElement('span');
     rootElement.className = 'path-segment';
     rootElement.textContent = '/';
@@ -334,18 +298,15 @@ export class FileBrowser {
     rootElement.addEventListener('click', () => this.handlePathBarClick('/'));
     this.pathBar.appendChild(rootElement);
     
-    // Add path segments
     let currentPath = '';
     pathSegments.forEach(segment => {
       currentPath += '/' + segment;
-      
-      // Add separator
+
       const separator = document.createElement('span');
       separator.className = 'path-separator';
       separator.textContent = ' > ';
       this.pathBar.appendChild(separator);
       
-      // Add segment
       const segmentElement = document.createElement('span');
       segmentElement.className = 'path-segment';
       segmentElement.textContent = segment;
@@ -371,7 +332,6 @@ export class FileBrowser {
   handleItemClick(event, item) {
     const path = item.dataset.path;
     
-    // Handle multi-select with Ctrl/Cmd key
     if (event.ctrlKey || event.metaKey) {
       if (this.selectedItems.has(path)) {
         this.selectedItems.delete(path);
@@ -381,11 +341,8 @@ export class FileBrowser {
         item.classList.add('selected');
       }
     } 
-    // Handle range select with Shift key
     else if (event.shiftKey && this.selectedItems.size > 0) {
-      // Not implemented yet - would need to keep track of last selected item
     }
-    // Normal selection (deselect others)
     else {
       this.selectedItems.clear();
       this.fileList.querySelectorAll('.file-item.selected').forEach(el => {
@@ -395,7 +352,6 @@ export class FileBrowser {
       item.classList.add('selected');
     }
     
-    // Update status bar
     this.updateStatusBar(`${this.selectedItems.size} item(s) selected`);
   }
   
@@ -408,10 +364,8 @@ export class FileBrowser {
     const type = item.dataset.type;
     
     if (type === 'directory') {
-      // Navigate to directory
       this.loadPath(path);
     } else {
-      // Download file
       this.downloadFile(path);
     }
   }
@@ -427,7 +381,6 @@ export class FileBrowser {
     const path = item.dataset.path;
     const type = item.dataset.type;
     
-    // Select the item if not already selected
     if (!this.selectedItems.has(path)) {
       this.selectedItems.clear();
       this.fileList.querySelectorAll('.file-item.selected').forEach(el => {
@@ -437,14 +390,12 @@ export class FileBrowser {
       item.classList.add('selected');
     }
     
-    // Create context menu
     const contextMenu = document.createElement('div');
     contextMenu.className = 'context-menu';
     contextMenu.style.position = 'absolute';
     contextMenu.style.left = `${event.pageX}px`;
     contextMenu.style.top = `${event.pageY}px`;
     
-    // Menu items
     const menuItems = [
       {
         label: type === 'directory' ? 'Open' : 'Download',
@@ -466,7 +417,6 @@ export class FileBrowser {
       }
     ];
     
-    // Create menu items
     menuItems.forEach(menuItem => {
       const menuItemElement = document.createElement('div');
       menuItemElement.className = 'context-menu-item';
@@ -478,10 +428,8 @@ export class FileBrowser {
       contextMenu.appendChild(menuItemElement);
     });
     
-    // Add to body
     document.body.appendChild(contextMenu);
     
-    // Close on outside click
     const closeMenu = () => {
       if (document.body.contains(contextMenu)) {
         document.body.removeChild(contextMenu);
@@ -664,7 +612,6 @@ export class FileBrowser {
           }
         }
         
-        // Refresh directory after uploads
         this.loadPath(this.currentPath);
       }
     } catch (error) {
@@ -679,7 +626,6 @@ export class FileBrowser {
     if (!this.currentConnection || this.selectedItems.size === 0) return;
     
     try {
-      // If multiple files or directory, ask for a directory to save to
       const saveResult = await window.api.openFileDialog({
         title: 'Select Download Location',
         properties: ['openDirectory']
@@ -698,7 +644,6 @@ export class FileBrowser {
             const localPath = `${saveDir}/${fileName}`;
             
             if (isDirectory) {
-              // Directory download not implemented yet
               console.log(`Directory download not implemented: ${remotePath}`);
             } else {
               await this.sftpManager.downloadFile(this.currentConnection, remotePath, localPath);
@@ -744,7 +689,6 @@ export class FileBrowser {
    * @param {Object} transfer - Transfer object
    */
   handleTransferUpdate(transferId, transfer) {
-    // Find or create transfer element
     let transferElement = document.getElementById(`transfer-${transferId}`);
     
     if (!transferElement) {
@@ -754,10 +698,8 @@ export class FileBrowser {
       this.transfersContainer.appendChild(transferElement);
     }
     
-    // Get filename from path
     const fileName = transfer.remotePath.split('/').pop();
     
-    // Update transfer element
     transferElement.innerHTML = `
       <div class="transfer-info">
         <div class="transfer-name">${fileName}</div>
@@ -770,7 +712,6 @@ export class FileBrowser {
       </div>
     `;
     
-    // Remove completed transfers after a delay
     if (transfer.status === 'completed' || transfer.status === 'error' || transfer.status === 'cancelled') {
       setTimeout(() => {
         if (transferElement.parentNode) {
@@ -779,7 +720,6 @@ export class FileBrowser {
       }, 5000);
     }
     
-    // If all transfers are done, refresh the directory
     const activeTransfers = Object.values(this.sftpManager.getTransfers()).filter(t => 
       t.status !== 'completed' && t.status !== 'error' && t.status !== 'cancelled'
     );

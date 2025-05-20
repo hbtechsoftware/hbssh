@@ -1,0 +1,22 @@
+.sftp-panel {
+    width: 300px;
+    min-width: 250px;
+    max-width: 50%; 
+    border-left: 1px solid #444;
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    background-color: #2c2c2c;
+    padding: 10px;
+    color: #ccc;
+    height: 100%;
+}
+
+#sftp-file-list {
+    list-style-type: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+    flex-grow: 1;
+    padding-bottom: 40px;
+} 

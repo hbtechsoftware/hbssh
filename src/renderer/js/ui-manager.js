@@ -1,13 +1,13 @@
 /**
- * Manages the UI interactions and connections between other managers
+ * Manages UI interactions and connections between other managers.
  */
 export class UIManager {
   /**
-   * Initialize the UI Manager
-   * @param {ConnectionManager} connectionManager - Connection manager instance
-   * @param {TerminalManager} terminalManager - Terminal manager instance
-   * @param {TabManager} tabManager - Tab manager instance
-   * @param {SFTPManager} sftpManager - SFTP manager instance
+   * Initializes the UI Manager.
+   * @param {ConnectionManager} connectionManager - The connection manager instance.
+   * @param {TerminalManager} terminalManager - The terminal manager instance.
+   * @param {TabManager} tabManager - The tab manager instance.
+   * @param {SFTPManager} sftpManager - The SFTP manager instance.
    */
   constructor(connectionManager, terminalManager, tabManager, sftpManager) {
     this.connectionManager = connectionManager;
@@ -37,11 +37,10 @@ export class UIManager {
     this.handleConnectionClick = this.handleConnectionClick.bind(this);
     this.updateConnectionsList = this.updateConnectionsList.bind(this);
     this.handleBrowseForKey = this.handleBrowseForKey.bind(this);
-    this.handleFileBrowserMenu = this.handleFileBrowserMenu.bind(this);
   }
   
   /**
-   * Initialize the UI
+   * Initializes the UI and adds necessary event listeners.
    */
   init() {
     // Set up button event listeners
@@ -61,170 +60,11 @@ export class UIManager {
     
     // Subscribe to connection manager events
     this.connectionManager.onConnectionsUpdated(this.updateConnectionsList);
-    
-    // Create SFTP toolbar button
-    this.createSFTPButton();
   }
 
   /**
-   * Create SFTP toolbar button
-   */
-  createSFTPButton() {
-    const toolbar = document.getElementById('appToolbar');
-    if (!toolbar) return;
-    
-    // Clear any existing SFTP button
-    const existingButton = document.getElementById('fileBrowserBtn');
-    if (existingButton) {
-      existingButton.remove();
-    }
-    
-    // Create new SFTP button
-    const fileBrowserBtn = document.createElement('button');
-    fileBrowserBtn.id = 'fileBrowserBtn';
-    fileBrowserBtn.className = 'toolbar-button';
-    fileBrowserBtn.title = 'Open SFTP File Browser';
-    fileBrowserBtn.innerHTML = '📂 FTP';
-    fileBrowserBtn.addEventListener('click', this.handleFileBrowserMenu);
-    
-    // Add to toolbar
-    toolbar.appendChild(fileBrowserBtn);
-  }
-
-  /**
-   * Handle file browser menu click
-   * @param {Event} event - Click event
-   */
-  handleFileBrowserMenu(event) {
-    // Get the active terminal
-    const activeTerminal = this.terminalManager.getActiveTerminal();
-    if (!activeTerminal || !activeTerminal.connection) {
-      window.api.showMessage({
-        type: 'info',
-        title: 'SFTP Browser',
-        message: 'Please connect to an SSH server first.'
-      });
-      return;
-    }
-    
-    // Create a new tab with SFTP browser
-    const connection = activeTerminal.connection;
-    const tabName = `SFTP: ${connection.name}`;
-    
-    // Create tab content with split view
-    const tabContent = document.createElement('div');
-    tabContent.className = 'split-view';
-    
-    // Terminal side
-    const terminalContainer = document.createElement('div');
-    terminalContainer.className = 'split-view-left';
-    const terminalElement = document.createElement('div');
-    terminalElement.className = 'terminal-container';
-    terminalElement.id = 'terminal-sftp-' + Date.now();
-    terminalContainer.appendChild(terminalElement);
-    
-    // Split handle
-    const splitHandle = document.createElement('div');
-    splitHandle.className = 'split-handle';
-    
-    // File browser side
-    const fileBrowserContainer = document.createElement('div');
-    fileBrowserContainer.className = 'split-view-right file-browser';
-    fileBrowserContainer.id = 'file-browser-' + Date.now();
-    
-    // Add all elements to tab content
-    tabContent.appendChild(terminalContainer);
-    tabContent.appendChild(splitHandle);
-    tabContent.appendChild(fileBrowserContainer);
-    
-    // Create the tab
-    const tabId = this.tabManager.createCustomTab(tabName, tabContent);
-    
-    // Initialize terminal in the tab
-    this.terminalManager.createTerminal(connection, 'sftp-' + Date.now());
-    
-    // Initialize file browser
-    import('./file-browser.js').then(module => {
-      const FileBrowser = module.FileBrowser;
-      const fileBrowser = new FileBrowser(this.sftpManager);
-      fileBrowser.init(fileBrowserContainer);
-      
-      // Connect to SFTP server
-      fileBrowser.connect(connection)
-        .catch(error => {
-          window.api.showMessage({
-            type: 'error',
-            title: 'SFTP Connection Error',
-            message: error.message
-          });
-        });
-      
-      // Set up resizable split view
-      let isResizing = false;
-      let startX = 0;
-      let startLeftWidth = 0;
-      
-      splitHandle.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        startX = e.clientX;
-        startLeftWidth = terminalContainer.offsetWidth;
-        
-        // Add event listeners
-        document.addEventListener('mousemove', handleMouseMove);
-        document.addEventListener('mouseup', () => {
-          isResizing = false;
-          document.removeEventListener('mousemove', handleMouseMove);
-          
-          // Resize terminal after resize is complete
-          const activeTermId = this.terminalManager.activeTerminalId;
-          if (activeTermId) {
-            this.terminalManager.fitTerminal(activeTermId);
-          }
-        });
-      });
-      
-      const handleMouseMove = (e) => {
-        if (!isResizing) return;
-        
-        const deltaX = e.clientX - startX;
-        const newLeftWidth = Math.max(100, Math.min(startLeftWidth + deltaX, tabContent.offsetWidth - 100));
-        const leftPercent = (newLeftWidth / tabContent.offsetWidth) * 100;
-        
-        terminalContainer.style.width = `${leftPercent}%`;
-        fileBrowserContainer.style.width = `${100 - leftPercent}%`;
-      };
-    });
-  }
-
-  /**
-   * Handle browse for private key file
-   */
-  async handleBrowseForKey() {
-    try {
-      // Use the main process to open a file dialog
-      const result = await window.api.openFileDialog({
-        title: 'Select Private Key File',
-        defaultPath: window.api.getHomePath(),
-        buttonLabel: 'Select Key',
-        filters: [
-          { name: 'Key Files', extensions: ['pem', 'key', 'ppk', 'pub'] },
-          { name: 'All Files', extensions: ['*'] }
-        ],
-        properties: ['openFile']
-      });
-
-      if (!result.canceled && result.filePaths.length > 0) {
-        // Set the private key path input
-        document.getElementById('privateKeyPath').value = result.filePaths[0];
-      }
-    } catch (error) {
-      console.error('Failed to open file dialog:', error);
-    }
-  }
-  
-  /**
-   * Show the connection modal
-   * @param {Object} existingConnection - Optional existing connection to edit
+   * Shows the add/edit connection modal.
+   * @param {Object} existingConnection - The existing connection to edit (optional).
    */
   showConnectionModal(existingConnection = null) {
     // Reset form
@@ -268,37 +108,37 @@ export class UIManager {
   }
   
   /**
-   * Hide the connection modal
+   * Hides the add/edit connection modal.
    */
   hideConnectionModal() {
     this.connectionModal.classList.remove('show');
   }
   
   /**
-   * Show the about modal
+   * Shows the about modal.
    */
   showAboutModal() {
     this.aboutModal.classList.add('show');
   }
   
   /**
-   * Hide the about modal
+   * Hides the about modal.
    */
   hideAboutModal() {
     this.aboutModal.classList.remove('show');
   }
   
   /**
-   * Handle new connection request
+   * Handles the request to add a new connection.
    */
   handleNewConnection() {
     this.showConnectionModal();
   }
   
   /**
-   * Validate a connection
-   * @param {Object} connection - Connection object to validate
-   * @returns {Object} Object with isValid and message properties
+   * Validates the connection information.
+   * @param {Object} connection - The connection object to validate.
+   * @returns {Object} Validation result with isValid and message properties.
    */
   validateConnection(connection) {
     if (!connection.name || connection.name.trim() === '') {
@@ -306,7 +146,7 @@ export class UIManager {
     }
     
     if (!connection.host || connection.host.trim() === '') {
-      return { isValid: false, message: 'Host is required' };
+      return { isValid: false, message: 'Server address is required' };
     }
     
     if (!connection.port || connection.port <= 0 || connection.port > 65535) {
@@ -323,7 +163,7 @@ export class UIManager {
       }
     } else if (connection.authType === 'privateKey') {
       if (!connection.privateKeyPath || connection.privateKeyPath.trim() === '') {
-        return { isValid: false, message: 'Private key path is required for key authentication' };
+        return { isValid: false, message: 'Key path is required for private key authentication' };
       }
     }
     
@@ -331,8 +171,8 @@ export class UIManager {
   }
   
   /**
-   * Handle connection form submission
-   * @param {Event} event - Form submit event
+   * Handles the connection form submission.
+   * @param {Event} event - The form submission event.
    */
   async handleSubmitConnection(event) {
     event.preventDefault();
@@ -395,7 +235,7 @@ export class UIManager {
   }
   
   /**
-   * Handle auth type change
+   * Handles the authentication type change.
    */
   handleAuthTypeChange() {
     const authType = this.authType.value;
@@ -410,8 +250,8 @@ export class UIManager {
   }
   
   /**
-   * Handle connection item click
-   * @param {Object} connection - The connection that was clicked
+   * Handles clicking on a connection item.
+   * @param {Object} connection - The clicked connection.
    */
   handleConnectionClick(connection) {
     // Create a new tab with the connection
@@ -419,7 +259,7 @@ export class UIManager {
   }
   
   /**
-   * Update the connections list in the UI
+   * Updates the list of saved connections in the UI.
    */
   updateConnectionsList() {
     // Clear the existing list
@@ -478,7 +318,7 @@ export class UIManager {
         e.stopPropagation();
         const confirmDelete = await window.api.showConfirmDialog({
           title: 'Delete Connection',
-          message: `Are you sure you want to delete "${connection.name}"?`,
+          message: `Are you sure you want to delete the connection "${connection.name}"?`,
           buttons: ['Delete', 'Cancel']
         });
         
@@ -510,5 +350,31 @@ export class UIManager {
       // Add to the list
       this.connectionsList.appendChild(connectionItem);
     });
+  }
+
+  /**
+   * Opens a file dialog to select a private key file.
+   */
+  async handleBrowseForKey() {
+    try {
+      // Use the main process to open a file dialog
+      const result = await window.api.openFileDialog({
+        title: 'Select Private Key File',
+        defaultPath: window.api.getHomePath(),
+        buttonLabel: 'Select Key',
+        filters: [
+          { name: 'Key Files', extensions: ['pem', 'key', 'ppk', 'pub'] },
+          { name: 'All Files', extensions: ['*'] }
+        ],
+        properties: ['openFile']
+      });
+
+      if (!result.canceled && result.filePaths.length > 0) {
+        // Set the private key path input
+        document.getElementById('privateKeyPath').value = result.filePaths[0];
+      }
+    } catch (error) {
+      console.error('Failed to open file dialog:', error);
+    }
   }
 } 
