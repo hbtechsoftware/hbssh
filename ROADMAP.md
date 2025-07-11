@@ -39,6 +39,11 @@ This document outlines the development phases for the HBSSH project, a cross-pla
 - [ ] Connection profiles and groups
 - [ ] Saved command macros
 - [ ] Terminal customization (colors, fonts, etc.)
+- [ ] Command history navigation (arrow keys)
+- [ ] Auto-completion with Tab key
+- [ ] Syntax highlighting for common commands
+- [ ] Command suggestions popup
+- [ ] Smart command prediction
 
 ## Phase 5: Security Features
 

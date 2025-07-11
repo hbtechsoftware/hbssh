@@ -20,23 +20,19 @@ class SftpManager extends EventEmitter {
    * @returns {Promise<string>} Connection ID
    */
   async connect(config) {
-    // Generate a connection ID
     const connectionId = `sftp-${Date.now()}`;
     
     try {
-      // Create a new SFTP client
       const sftp = new SftpClient();
       
-      // Set up connection config
       const connectionConfig = {
         host: config.host,
         port: config.port || 22,
         username: config.username,
-        readyTimeout: 30000, // 30 seconds timeout
-        keepaliveInterval: 30000, // Send keep-alive every 30 seconds
+        readyTimeout: 30000, 
+        keepaliveInterval: 30000, 
       };
       
-      // Add authentication based on type
       if (config.authType === 'password') {
         connectionConfig.password = config.password;
       } else if (config.authType === 'privateKey') {
@@ -50,10 +46,8 @@ class SftpManager extends EventEmitter {
         }
       }
       
-      // Connect to the server
       await sftp.connect(connectionConfig);
       
-      // Store the connection
       this.connections[connectionId] = {
         sftp,
         config,
@@ -97,10 +91,8 @@ class SftpManager extends EventEmitter {
     }
     
     try {
-      // Update current directory
       connection.currentDirectory = remotePath;
       
-      // Get file list
       const list = await connection.sftp.list(remotePath);
       return list.map(item => ({
         ...item,
@@ -207,7 +199,6 @@ class SftpManager extends EventEmitter {
     }
 
     try {
-      // ssh2-sftp-client's get method can accept a WritableStream or return a Buffer if destination is null/undefined
       const buffer = await connection.sftp.get(remotePath);
       return buffer.toString('utf8');
     } catch (error) {
@@ -233,7 +224,6 @@ class SftpManager extends EventEmitter {
     }
 
     try {
-      // ssh2-sftp-client's put method can accept a Buffer, string (path to local file), or ReadableStream
       const bufferContent = Buffer.isBuffer(content) ? content : Buffer.from(content, 'utf8');
       await connection.sftp.put(bufferContent, remotePath);
     } catch (error) {
@@ -255,10 +245,8 @@ class SftpManager extends EventEmitter {
       throw new Error('Connection not found');
     }
     
-    // Generate transfer ID
     const transferId = `transfer-${Date.now()}-${this.transferCounter++}`;
     
-    // Create transfer object
     this.transfers[transferId] = {
       type: 'download',
       remotePath,
@@ -269,12 +257,10 @@ class SftpManager extends EventEmitter {
       startTime: Date.now()
     };
     
-    // Get file stats to calculate progress
     try {
       const stats = await connection.sftp.stat(remotePath);
       this.transfers[transferId].size = stats.size;
       
-      // Start download in background
       this.downloadFile(connectionId, transferId, remotePath, localPath, stats.size);
       
       return transferId;
@@ -298,10 +284,8 @@ class SftpManager extends EventEmitter {
       throw new Error('Connection not found');
     }
     
-    // Generate transfer ID
     const transferId = `transfer-${Date.now()}-${this.transferCounter++}`;
     
-    // Create transfer object
     this.transfers[transferId] = {
       type: 'upload',
       remotePath,
@@ -312,12 +296,10 @@ class SftpManager extends EventEmitter {
       startTime: Date.now()
     };
     
-    // Get file stats to calculate progress
     try {
       const stats = fs.statSync(localPath);
       this.transfers[transferId].size = stats.size;
       
-      // Start upload in background
       this.uploadFile(connectionId, transferId, localPath, remotePath, stats.size);
       
       return transferId;
@@ -422,7 +404,6 @@ class SftpManager extends EventEmitter {
     const transfer = this.transfers[transferId];
     
     try {
-      // Create progress tracking
       let lastProgress = 0;
       const updateProgress = (bytesTransferred) => {
         const progress = Math.round((bytesTransferred / totalSize) * 100);
@@ -433,20 +414,17 @@ class SftpManager extends EventEmitter {
         }
       };
       
-      // Start download
       await connection.sftp.fastGet(remotePath, localPath, {
         step: (total_transferred, chunk, total) => {
           updateProgress(total_transferred);
         }
       });
       
-      // Update transfer status
       transfer.status = 'completed';
       transfer.progress = 100;
       transfer.completedTime = Date.now();
       this.emit('transfer-update', transferId, transfer);
     } catch (error) {
-      // Update transfer status on error
       transfer.status = 'error';
       transfer.error = error.message;
       this.emit('transfer-update', transferId, transfer);
@@ -469,7 +447,6 @@ class SftpManager extends EventEmitter {
     const transfer = this.transfers[transferId];
     
     try {
-      // Create progress tracking
       let lastProgress = 0;
       const updateProgress = (bytesTransferred) => {
         const progress = Math.round((bytesTransferred / totalSize) * 100);
@@ -480,20 +457,17 @@ class SftpManager extends EventEmitter {
         }
       };
       
-      // Start upload
       await connection.sftp.fastPut(localPath, remotePath, {
         step: (total_transferred, chunk, total) => {
           updateProgress(total_transferred);
         }
       });
       
-      // Update transfer status
       transfer.status = 'completed';
       transfer.progress = 100;
       transfer.completedTime = Date.now();
       this.emit('transfer-update', transferId, transfer);
     } catch (error) {
-      // Update transfer status on error
       transfer.status = 'error';
       transfer.error = error.message;
       this.emit('transfer-update', transferId, transfer);

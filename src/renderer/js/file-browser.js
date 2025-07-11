@@ -53,7 +53,6 @@ export class FileBrowser {
   init(container) {
     this.container = container;
     
-    // Create UI elements
     this.createUI();
   }
   
@@ -644,7 +643,6 @@ export class FileBrowser {
             const localPath = `${saveDir}/${fileName}`;
             
             if (isDirectory) {
-              console.log(`Directory download not implemented: ${remotePath}`);
             } else {
               await this.sftpManager.downloadFile(this.currentConnection, remotePath, localPath);
             }

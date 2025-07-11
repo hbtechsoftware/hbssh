@@ -22,6 +22,26 @@ export class TerminalManager {
     /** @type {number} Reconnection interval (ms). */
     this.RECONNECT_INTERVAL = 3000;
     
+    /** @type {Object<string, Array<string>>} Command history for each terminal. */
+    this.commandHistory = {};
+    /** @type {Object<string, number>} Current history position for each terminal. */
+    this.historyPosition = {};
+    /** @type {Object<string, string>} Current command being typed for each terminal. */
+    this.currentCommand = {};
+    /** @type {Object<string, string>} Current line buffer for each terminal. */
+    this.currentLine = {};
+    /** @type {Array<string>} Common commands for auto-completion. */
+    this.commonCommands = [
+      'ls', 'cd', 'pwd', 'mkdir', 'rmdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'find', 'chmod', 'chown',
+      'ps', 'kill', 'top', 'htop', 'df', 'du', 'free', 'uname', 'whoami', 'id', 'groups',
+      'ssh', 'scp', 'rsync', 'wget', 'curl', 'ping', 'netstat', 'ss', 'iptables',
+      'vim', 'nano', 'emacs', 'less', 'more', 'head', 'tail', 'sort', 'uniq', 'wc',
+      'tar', 'gzip', 'gunzip', 'zip', 'unzip', 'systemctl', 'service', 'mount', 'umount',
+      'history', 'alias', 'which', 'whereis', 'locate', 'updatedb', 'crontab', 'jobs'
+    ];
+    /** @type {HTMLElement|null} Auto-completion suggestion box. */
+    this.suggestionBox = null;
+    
     this.createTerminal = this.createTerminal.bind(this);
     this.closeTerminal = this.closeTerminal.bind(this);
     this.setActiveTerminal = this.setActiveTerminal.bind(this);
@@ -32,6 +52,10 @@ export class TerminalManager {
     this.handleKeyboardEvent = this.handleKeyboardEvent.bind(this);
     this.copySelectedText = this.copySelectedText.bind(this);
     this.pasteText = this.pasteText.bind(this);
+    this.handleCommandHistory = this.handleCommandHistory.bind(this);
+    this.handleAutoCompletion = this.handleAutoCompletion.bind(this);
+    this.showSuggestions = this.showSuggestions.bind(this);
+    this.hideSuggestions = this.hideSuggestions.bind(this);
     
     window.addEventListener('resize', this.handleResize);
     window.api.onSSHData(this.handleSSHData);
@@ -150,6 +174,11 @@ export class TerminalManager {
       buffer: [],
       reconnecting: false
     };
+    
+    this.commandHistory[id] = [];
+    this.historyPosition[id] = -1;
+    this.currentCommand[id] = '';
+    this.currentLine[id] = '';
     terminal.onData((data) => {
       this.handleTerminalInput(id, data);
     });
@@ -242,10 +271,47 @@ export class TerminalManager {
   async handleTerminalInput(id, data) {
     const terminalInstance = this.terminals[id];
     if (!terminalInstance) return;
+    
+    const keyCode = data.charCodeAt(0);
+    
+    if (keyCode === 9) {
+      this.handleAutoCompletion(id);
+      return;
+    }
+    
+    if (keyCode === 27) {
+      const nextChar = data.length > 1 ? data.charCodeAt(1) : null;
+      if (nextChar === 91) {
+        const arrowKey = data.length > 2 ? data.charCodeAt(2) : null;
+        if (arrowKey === 65) {
+          this.handleCommandHistory(id, 'up');
+          return;
+        } else if (arrowKey === 66) {
+          this.handleCommandHistory(id, 'down');
+          return;
+        }
+      }
+    }
+    
+    if (keyCode === 13) {
+      const command = this.currentLine[id].trim();
+      if (command && command.length > 0) {
+        this.addToHistory(id, command);
+      }
+      this.currentLine[id] = '';
+      this.historyPosition[id] = -1;
+      this.hideSuggestions();
+    } else if (keyCode === 127 || keyCode === 8) {
+      this.currentLine[id] = this.currentLine[id].slice(0, -1);
+    } else if (keyCode >= 32 && keyCode <= 126) {
+      this.currentLine[id] += data;
+    }
+    
     if (!terminalInstance.sshConnectionId) {
       terminalInstance.buffer.push(data);
       return;
     }
+    
     try {
       await window.api.writeSSH(terminalInstance.sshConnectionId, data);
     } catch (error) {
@@ -264,7 +330,35 @@ export class TerminalManager {
     if (!terminalId) return;
     const terminalInstance = this.terminals[terminalId];
     if (!terminalInstance) return;
-    terminalInstance.terminal.write(data);
+    
+    const processedData = this.applySyntaxHighlighting(data);
+    terminalInstance.terminal.write(processedData);
+  }
+
+  /**
+   * Applies basic syntax highlighting to terminal output.
+   * @param {string} data - The raw terminal data.
+   * @returns {string} Data with ANSI color codes for syntax highlighting.
+   */
+  applySyntaxHighlighting(data) {
+    if (!data || typeof data !== 'string') return data;
+    
+    const commands = ['ls', 'cd', 'pwd', 'mkdir', 'rm', 'cp', 'mv', 'cat', 'grep', 'find', 'chmod', 'chown', 'ps', 'kill', 'top', 'htop', 'df', 'du', 'free', 'uname', 'whoami', 'ssh', 'scp', 'wget', 'curl', 'ping', 'vim', 'nano', 'tar', 'gzip', 'systemctl', 'service'];
+    
+    let processedData = data;
+    
+    commands.forEach(command => {
+      const regex = new RegExp(`\\b${command}\\b`, 'g');
+      processedData = processedData.replace(regex, `\x1b[1;32m${command}\x1b[0m`);
+    });
+    
+    processedData = processedData.replace(/(-{1,2}[a-zA-Z0-9-]+)/g, '\x1b[1;34m$1\x1b[0m');
+    processedData = processedData.replace(/(\d+)/g, '\x1b[1;33m$1\x1b[0m');
+    processedData = processedData.replace(/(\/[^\s]*)/g, '\x1b[1;36m$1\x1b[0m');
+    processedData = processedData.replace(/("([^"\\]|\\.)*")/g, '\x1b[1;35m$1\x1b[0m');
+    processedData = processedData.replace(/('([^'\\]|\\.)*')/g, '\x1b[1;35m$1\x1b[0m');
+    
+    return processedData;
   }
   
   /**
@@ -295,6 +389,168 @@ export class TerminalManager {
     terminalInstance.terminal.writeln(`\r\nConnection error: ${error}`);
   }
   
+  /**
+   * Adds a command to the history for the specified terminal.
+   * @param {string} id - The terminal ID.
+   * @param {string} command - The command to add to history.
+   */
+  addToHistory(id, command) {
+    if (!this.commandHistory[id]) {
+      this.commandHistory[id] = [];
+    }
+    if (this.commandHistory[id][this.commandHistory[id].length - 1] !== command) {
+      this.commandHistory[id].push(command);
+      if (this.commandHistory[id].length > 100) {
+        this.commandHistory[id].shift();
+      }
+    }
+  }
+
+  /**
+   * Handles command history navigation with arrow keys.
+   * @param {string} id - The terminal ID.
+   * @param {string} direction - 'up' or 'down'.
+   */
+  async handleCommandHistory(id, direction) {
+    const terminalInstance = this.terminals[id];
+    if (!terminalInstance || !terminalInstance.sshConnectionId) return;
+    
+    const history = this.commandHistory[id] || [];
+    if (history.length === 0) return;
+    
+    if (direction === 'up') {
+      if (this.historyPosition[id] === -1) {
+        this.currentCommand[id] = this.currentLine[id];
+        this.historyPosition[id] = history.length - 1;
+      } else if (this.historyPosition[id] > 0) {
+        this.historyPosition[id]--;
+      }
+    } else if (direction === 'down') {
+      if (this.historyPosition[id] >= 0 && this.historyPosition[id] < history.length - 1) {
+        this.historyPosition[id]++;
+      } else if (this.historyPosition[id] === history.length - 1) {
+        this.historyPosition[id] = -1;
+      }
+    }
+    
+    let newCommand = '';
+    if (this.historyPosition[id] === -1) {
+      newCommand = this.currentCommand[id];
+    } else {
+      newCommand = history[this.historyPosition[id]];
+    }
+    
+    const currentLineLength = this.currentLine[id].length;
+    if (currentLineLength > 0) {
+      await window.api.writeSSH(terminalInstance.sshConnectionId, '\b'.repeat(currentLineLength));
+      await window.api.writeSSH(terminalInstance.sshConnectionId, ' '.repeat(currentLineLength));
+      await window.api.writeSSH(terminalInstance.sshConnectionId, '\b'.repeat(currentLineLength));
+    }
+    
+    this.currentLine[id] = newCommand;
+    if (newCommand.length > 0) {
+      await window.api.writeSSH(terminalInstance.sshConnectionId, newCommand);
+    }
+  }
+
+  /**
+   * Handles auto-completion when Tab key is pressed.
+   * @param {string} id - The terminal ID.
+   */
+  async handleAutoCompletion(id) {
+    const terminalInstance = this.terminals[id];
+    if (!terminalInstance || !terminalInstance.sshConnectionId) return;
+    
+    const currentLine = this.currentLine[id];
+    if (!currentLine) return;
+    
+    const words = currentLine.split(' ');
+    const lastWord = words[words.length - 1];
+    
+    if (lastWord.length === 0) return;
+    
+    const matches = this.commonCommands.filter(cmd => 
+      cmd.toLowerCase().startsWith(lastWord.toLowerCase())
+    );
+    
+    if (matches.length === 1) {
+      const completion = matches[0].substring(lastWord.length);
+      this.currentLine[id] += completion;
+      await window.api.writeSSH(terminalInstance.sshConnectionId, completion);
+    } else if (matches.length > 1) {
+      this.showSuggestions(id, matches, lastWord);
+    }
+  }
+
+  /**
+   * Shows auto-completion suggestions in a popup.
+   * @param {string} id - The terminal ID.
+   * @param {Array<string>} suggestions - Array of suggestions.
+   * @param {string} partial - The partial command being typed.
+   */
+  showSuggestions(id, suggestions, partial) {
+    this.hideSuggestions();
+    
+    const terminalElement = document.getElementById(`terminal-${id}`);
+    if (!terminalElement) return;
+    
+    const suggestionBox = document.createElement('div');
+    suggestionBox.className = 'terminal-suggestions';
+    suggestionBox.innerHTML = `
+      <div class="suggestions-header">Öneriler:</div>
+      ${suggestions.map(suggestion => `
+        <div class="suggestion-item" data-suggestion="${suggestion}">
+          <span class="suggestion-command">${suggestion}</span>
+          <span class="suggestion-match">${partial}</span>
+        </div>
+      `).join('')}
+    `;
+    
+    suggestionBox.addEventListener('click', (e) => {
+      const suggestionItem = e.target.closest('.suggestion-item');
+      if (suggestionItem) {
+        const suggestion = suggestionItem.dataset.suggestion;
+        this.applySuggestion(id, suggestion, partial);
+      }
+    });
+    
+    terminalElement.appendChild(suggestionBox);
+    this.suggestionBox = suggestionBox;
+    
+    setTimeout(() => {
+      this.hideSuggestions();
+    }, 5000);
+  }
+
+  /**
+   * Applies a selected suggestion to the terminal.
+   * @param {string} id - The terminal ID.
+   * @param {string} suggestion - The selected suggestion.
+   * @param {string} partial - The partial command to replace.
+   */
+  async applySuggestion(id, suggestion, partial) {
+    const terminalInstance = this.terminals[id];
+    if (!terminalInstance || !terminalInstance.sshConnectionId) return;
+    
+    const completion = suggestion.substring(partial.length);
+    this.currentLine[id] = this.currentLine[id].slice(0, -partial.length) + suggestion;
+    
+    await window.api.writeSSH(terminalInstance.sshConnectionId, '\b'.repeat(partial.length));
+    await window.api.writeSSH(terminalInstance.sshConnectionId, suggestion);
+    
+    this.hideSuggestions();
+  }
+
+  /**
+   * Hides the auto-completion suggestions popup.
+   */
+  hideSuggestions() {
+    if (this.suggestionBox) {
+      this.suggestionBox.remove();
+      this.suggestionBox = null;
+    }
+  }
+
   /**
    * Returns the current dimensions (columns and rows) of the terminal.
    * @param {string} id - The terminal ID.
@@ -342,8 +598,15 @@ export class TerminalManager {
       }
       terminalInstance.terminal.dispose();
       delete this.terminals[id];
+      
+      delete this.commandHistory[id];
+      delete this.historyPosition[id];
+      delete this.currentCommand[id];
+      delete this.currentLine[id];
+      
       if (this.activeTerminalId === id) {
         this.activeTerminalId = null;
+        this.hideSuggestions();
       }
     }
   }

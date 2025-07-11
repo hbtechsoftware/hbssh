@@ -21,22 +21,18 @@ class SSHClient {
    */
   connect(config, onData, onError, onClose) {
     return new Promise((resolve, reject) => {
-      // Generate a connection ID
       const connectionId = `ssh-${Date.now()}`;
       
-      // Create a new SSH client
       const conn = new Client();
       
-      // Set up connection config
       const connectionConfig = {
         host: config.host,
         port: config.port || 22,
         username: config.username,
-        readyTimeout: 30000, // 30 seconds timeout
-        keepaliveInterval: 30000, // Send keep-alive every 30 seconds
+        readyTimeout: 30000, 
+        keepaliveInterval: 30000, 
       };
       
-      // Add authentication based on type
       if (config.authType === 'password') {
         connectionConfig.password = config.password;
       } else if (config.authType === 'privateKey') {
@@ -51,9 +47,7 @@ class SSHClient {
         }
       }
       
-      // Set up event handlers
       conn.on('ready', () => {
-        // Create a new shell session
         conn.shell((err, stream) => {
           if (err) {
             delete this.connections[connectionId];
@@ -61,17 +55,14 @@ class SSHClient {
             return;
           }
           
-          // Store the connection and stream
           this.connections[connectionId] = {
             client: conn,
             stream,
             config
           };
           
-          // Set as active connection
           this.activeConnectionId = connectionId;
           
-          // Set up stream handlers
           stream.on('data', (data) => {
             if (onData) onData(data.toString('utf8'));
           });
@@ -84,7 +75,6 @@ class SSHClient {
             if (onError) onError(errStream.message);
           });
           
-          // Resolve with the connection ID
           resolve(connectionId);
         });
       });
@@ -101,7 +91,6 @@ class SSHClient {
         }
       });
       
-      // Connect to the server
       conn.connect(connectionConfig);
     });
   }

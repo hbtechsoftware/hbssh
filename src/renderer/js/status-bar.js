@@ -41,7 +41,6 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {number} [data.diskUsedMB] - Used disk space on the server (MB).
    */
   if (window.api && window.api.onRemoteSystemInfoUpdate) {
-    console.log('UI (DOM Ready): Subscribing to remote system info event.');
     
     window.api.onRemoteSystemInfoUpdate((data) => {
       currentDisplayingConnectionId = data.connectionId;
@@ -88,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (window.api && window.api.onClearRemoteSystemInfo) {
     window.api.onClearRemoteSystemInfo((data) => {
       if (data.connectionId === currentDisplayingConnectionId) {
-        console.log(`UI: Clearing remote system info for [${data.connectionId}].`);
         setDefaultStatusText();
         currentDisplayingConnectionId = null;
       }

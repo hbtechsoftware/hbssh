@@ -27,7 +27,6 @@ export class TabManager {
    * Finds the welcome screen and displays it if there are no tabs.
    */
   init() {
-    console.log('Tab Manager initialized');
     
     if (!this.welcomeScreen) {
       this.welcomeScreen = document.getElementById('welcomeScreen');
