@@ -3,6 +3,7 @@ import { TerminalManager } from './terminal-manager.js';
 import { TabManager } from './tab-manager.js';
 import { UIManager } from './ui-manager.js';
 import { SFTPManager } from './sftp-manager.js';
+import { ThemeManager } from './theme-manager.js';
 
 /**
  * Initializes the application when the DOM content is fully loaded.
@@ -17,12 +18,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     const terminalManager = new TerminalManager();
     const tabManager = new TabManager(terminalManager);
     const sftpManager = new SFTPManager();
+    const themeManager = new ThemeManager();
     const uiManager = new UIManager(connectionManager, terminalManager, tabManager, sftpManager);
+    
+    // Global tema yöneticisini window'a ekle
+    window.themeManager = themeManager;
+    window.terminalManager = terminalManager;
     
     await connectionManager.loadConnections();
     
     uiManager.init();
     tabManager.init();
+    themeManager.initializeTheme();
     
     /**
      * Event listener for the 'New Connection' menu action.

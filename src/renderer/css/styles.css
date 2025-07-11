@@ -298,4 +298,54 @@
 
 .terminal-suggestions::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+
+/* Modern Preview Styles */
+.preview-user {
+  color: #32cd32; /* Yeşil kullanıcı */
+}
+
+/* Root kullanıcı için kırmızı */
+.preview-line:nth-child(2) .preview-user {
+  color: #ff4500; /* Kırmızı root */
+}
+
+.preview-line:nth-child(2) .preview-prompt {
+  color: #ff4500; /* Kırmızı # */
+}
+
+.preview-at {
+  color: #ffffff; /* Beyaz @ */
+}
+
+.preview-host {
+  color: #00bfff; /* Cyan host */
+}
+
+.preview-colon {
+  color: #ffffff; /* Beyaz : */
+}
+
+.preview-dir {
+  color: #4169e1; /* Mavi dizin */
+}
+
+.preview-prompt {
+  color: #ffd700; /* Sarı $ veya kırmızı # */
+}
+
+.preview-command {
+  color: #da70d6; /* Magenta komutlar */
+}
+
+.preview-success {
+  color: #32cd32; /* Yeşil başarı */
+}
+
+.preview-error {
+  color: #ff4500; /* Kırmızı hata */
+}
+
+.preview-number {
+  color: #ffa500; /* Turuncu sayılar */
 } 

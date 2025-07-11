@@ -97,14 +97,18 @@ function parseKbTotalUsedPercentRam(rawData) {
  * @param {string} topOutput - The command output string representing CPU usage.
  * @returns {number|null} CPU usage percentage, or null if parsing fails.
  */
-function parseCpuUsage(topOutput) {
+function parseCpuUsage(loadavgOutput) {
   try {
-    const usage = parseFloat(topOutput.trim());
-    if (!isNaN(usage)) {
-      return usage;
+    const parts = loadavgOutput.trim().split(' ');
+    if (parts.length >= 1) {
+      const load1min = parseFloat(parts[0]);
+      if (!isNaN(load1min)) {
+        const approxCpuPercent = Math.min(load1min * 100, 100);
+        return Math.round(approxCpuPercent * 10) / 10;
+      }
     }
   } catch (error) {
-    console.error('CPU parse error (single float):', error, 'Output:', topOutput);
+    console.error('CPU parse error (loadavg):', error, 'Output:', loadavgOutput);
   }
   return null;
 }
@@ -176,28 +180,231 @@ async function fetchAndSendRemoteStats(connectionId) {
 
   try {
     if (osType === 'linux') {
-      const ramCommand = 'free -m';
-      const cpuCommand = "top -bn1 | awk '/^%Cpu/{print $2+$4+$6}'";
-      const diskCommand = "df -P / | tail -n 1 | awk '{print $2 \"_\" $3 \"_\" $5}' | sed 's/%//g'";
+      // Tek bir komutla tüm sistem bilgilerini al (kanal sorunu için)
+      const combinedCommand = `echo "=RAM="; free -m; echo "=CPU="; cat /proc/loadavg; echo "=DISK="; df -P / | tail -n 1 | awk '{print $2 "_" $3 "_" $5}' | sed 's/%//g'`;
+      
+      try {
+        const combinedResult = await SSHClient.executeCommand(connectionId, combinedCommand);
+        console.log(`[${connectionId}] Kombine komut çıktısı:`, combinedResult);
+        
+        // Çıktıyı parse et
+        const sections = combinedResult.split('=');
+        
+        // RAM parse et
+        const ramSection = sections.find(s => s.includes('total') && s.includes('Mem:'));
+        if (ramSection) {
+          ramUsage = parseLinuxRamUsage(ramSection);
+          if (ramUsage) {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `Kombine komut - RAM başarılı: ${ramUsage.percent.toFixed(1)}%`
+            });
+          }
+        }
+        
+        // CPU parse et
+        const cpuSection = sections.find(s => s.includes(' ') && s.match(/^\s*[\d.]+/));
+        if (cpuSection) {
+          cpuUsage = parseCpuUsage(cpuSection.trim());
+          if (cpuUsage) {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `Kombine komut - CPU başarılı: ${cpuUsage.toFixed(1)}%`
+            });
+          }
+        }
+        
+        // Disk parse et
+        const diskSection = sections.find(s => s.includes('_') && s.match(/^\s*\d+_\d+_\d+/));
+        if (diskSection) {
+          diskUsage = parseDiskUsage(diskSection.trim());
+          if (diskUsage) {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `Kombine komut - Disk başarılı: ${diskUsage.percent}%`
+            });
+          }
+        }
+        
+        if (ramUsage && cpuUsage && diskUsage) {
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `Kombine komut tamamen başarılı! 🎉`
+          });
+        }
+        
+      } catch (combinedError) {
+        console.error(`[${connectionId}] Kombine komut başarısız, tekli komutlara geçiliyor:`, combinedError.message);
+        
+        // Kombine komut başarısızsa, tekli komutları dene (eski yöntem)
+        const ramCommand = 'free -m';
+        const cpuCommand = "cat /proc/loadavg";
+        const diskCommand = "df -P / | tail -n 1 | awk '{print $2 \"_\" $3 \"_\" $5}' | sed 's/%//g'";
 
-      const rawRamData = await SSHClient.executeCommand(connectionId, ramCommand);
-      ramUsage = parseLinuxRamUsage(rawRamData);
-      const rawCpuData = await SSHClient.executeCommand(connectionId, cpuCommand);
-      cpuUsage = parseCpuUsage(rawCpuData);
-      const rawDiskData = await SSHClient.executeCommand(connectionId, diskCommand);
-      diskUsage = parseDiskUsage(rawDiskData);
+        try {
+          const rawRamData = await SSHClient.executeCommand(connectionId, ramCommand);
+          console.log(`[${connectionId}] RAM komut çıktısı:`, rawRamData);
+          ramUsage = parseLinuxRamUsage(rawRamData);
+          if (!ramUsage) {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `RAM komutu çalıştı ama parse edilemedi: ${rawRamData?.substring(0, 100)}...`
+            });
+          }
+        } catch (ramError) {
+          console.error(`[${connectionId}] RAM komut hatası:`, ramError.message);
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `RAM komutu başarısız: ${ramError.message}`
+          });
+        }
+
+        try {
+          const rawCpuData = await SSHClient.executeCommand(connectionId, cpuCommand);
+          console.log(`[${connectionId}] CPU komut çıktısı:`, rawCpuData);
+          cpuUsage = parseCpuUsage(rawCpuData);
+          if (!cpuUsage) {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `CPU komutu çalıştı ama parse edilemedi: ${rawCpuData?.substring(0, 100)}...`
+            });
+          }
+        } catch (cpuError) {
+          console.error(`[${connectionId}] CPU komut hatası:`, cpuError.message);
+          
+          // Channel open failure için alternatif CPU komutları dene
+          if (cpuError.message.includes('Channel open failure')) {
+            console.log(`[${connectionId}] Channel failure - alternatif CPU komutları deneniyor...`);
+            
+            const alternativeCpuCommands = [
+              'uptime',
+              'cat /proc/stat | head -1',
+              'who'
+            ];
+            
+            for (const altCommand of alternativeCpuCommands) {
+              try {
+                console.log(`[${connectionId}] Alternatif CPU komutu deneniyor: ${altCommand}`);
+                const altResult = await SSHClient.executeCommand(connectionId, altCommand);
+                console.log(`[${connectionId}] Alternatif CPU komut başarılı: ${altResult?.substring(0, 100)}`);
+                
+                if (altCommand === 'uptime') {
+                  // uptime çıktısından load average'ı parse et
+                  const uptimeMatch = altResult.match(/load average:\s*([\d.]+)/);
+                  if (uptimeMatch) {
+                    const load = parseFloat(uptimeMatch[1]);
+                    cpuUsage = Math.min(load * 100, 100);
+                    mainWindow.webContents.send('remote-system-info-update', {
+                      connectionId,
+                      debug: `CPU alternatif komut (uptime) başarılı: Load ${load}`
+                    });
+                    break;
+                  }
+                }
+                
+                // İlk çalışan komutla işleme devam et
+                mainWindow.webContents.send('remote-system-info-update', {
+                  connectionId,
+                  debug: `CPU alternatif komut çalıştı: ${altCommand}`
+                });
+                break;
+                
+              } catch (altError) {
+                console.log(`[${connectionId}] Alternatif komut '${altCommand}' da başarısız: ${altError.message}`);
+              }
+            }
+            
+            if (!cpuUsage) {
+              mainWindow.webContents.send('remote-system-info-update', {
+                connectionId,
+                debug: `Tüm CPU komutları başarısız - SSH kanal sorunu`
+              });
+            }
+          } else {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `CPU komutu başarısız: ${cpuError.message}`
+            });
+          }
+        }
+
+        try {
+          const rawDiskData = await SSHClient.executeCommand(connectionId, diskCommand);
+          console.log(`[${connectionId}] Disk komut çıktısı:`, rawDiskData);
+          diskUsage = parseDiskUsage(rawDiskData);
+          if (!diskUsage) {
+            mainWindow.webContents.send('remote-system-info-update', {
+              connectionId,
+              debug: `Disk komutu çalıştı ama parse edilemedi: ${rawDiskData?.substring(0, 100)}...`
+            });
+          }
+        } catch (diskError) {
+          console.error(`[${connectionId}] Disk komut hatası:`, diskError.message);
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `Disk komutu başarısız: ${diskError.message}`
+          });
+        }
+      } // kombinedError catch bloğunu kapat
 
     } else if (osType === 'macos') {
       const ramCommand = "top -l 1 -s 0 | grep PhysMem";
       const cpuCommand = "top -l 1 -s 0 | grep \"CPU usage\"";
       const diskCommand = "df -k / | tail -n 1 | awk '{print $2 \"_\" $3 \"_\" $5}' | sed 's/%//g'";
 
-      const rawRamData = await SSHClient.executeCommand(connectionId, ramCommand);
-      ramUsage = parseMacOsTopRam(rawRamData);
-      const rawCpuData = await SSHClient.executeCommand(connectionId, cpuCommand);
-      cpuUsage = parseMacOsCpuUsage(rawCpuData);
-      const rawDiskData = await SSHClient.executeCommand(connectionId, diskCommand);
-      diskUsage = parseDiskUsage(rawDiskData); 
+      try {
+        const rawRamData = await SSHClient.executeCommand(connectionId, ramCommand);
+        console.log(`[${connectionId}] macOS RAM komut çıktısı:`, rawRamData);
+        ramUsage = parseMacOsTopRam(rawRamData);
+        if (!ramUsage) {
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `macOS RAM komutu çalıştı ama parse edilemedi: ${rawRamData?.substring(0, 100)}...`
+          });
+        }
+      } catch (ramError) {
+        console.error(`[${connectionId}] macOS RAM komut hatası:`, ramError.message);
+        mainWindow.webContents.send('remote-system-info-update', {
+          connectionId,
+          debug: `macOS RAM komutu başarısız: ${ramError.message}`
+        });
+      }
+
+      try {
+        const rawCpuData = await SSHClient.executeCommand(connectionId, cpuCommand);
+        console.log(`[${connectionId}] macOS CPU komut çıktısı:`, rawCpuData);
+        cpuUsage = parseMacOsCpuUsage(rawCpuData);
+        if (!cpuUsage) {
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `macOS CPU komutu çalıştı ama parse edilemedi: ${rawCpuData?.substring(0, 100)}...`
+          });
+        }
+      } catch (cpuError) {
+        console.error(`[${connectionId}] macOS CPU komut hatası:`, cpuError.message);
+        mainWindow.webContents.send('remote-system-info-update', {
+          connectionId,
+          debug: `macOS CPU komutu başarısız: ${cpuError.message}`
+        });
+      }
+
+      try {
+        const rawDiskData = await SSHClient.executeCommand(connectionId, diskCommand);
+        console.log(`[${connectionId}] macOS Disk komut çıktısı:`, rawDiskData);
+        diskUsage = parseDiskUsage(rawDiskData);
+        if (!diskUsage) {
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `macOS Disk komutu çalıştı ama parse edilemedi: ${rawDiskData?.substring(0, 100)}...`
+          });
+        }
+      } catch (diskError) {
+        console.error(`[${connectionId}] macOS Disk komut hatası:`, diskError.message);
+        mainWindow.webContents.send('remote-system-info-update', {
+          connectionId,
+          debug: `macOS Disk komutu başarısız: ${diskError.message}`
+        });
+      } 
 
     } else if (osType === 'windows') {
       // PowerShell commands to output: totalKB_usedKB_percent for RAM/Disk, float for CPU
@@ -225,6 +432,55 @@ async function fetchAndSendRemoteStats(connectionId) {
       }
     } else {
       console.warn(`[${connectionId}] OS type '${osType}' not fully supported for stats collection.`);
+      mainWindow.webContents.send('remote-system-info-update', {
+        connectionId,
+        debug: `Desteklenmeyen OS tipi: ${osType} - Basit komutlar deneniyor...`
+      });
+      
+      try {
+        const simpleMemCommand = 'cat /proc/meminfo | grep -E "MemTotal|MemFree|MemAvailable"';
+        const simpleCpuCommand = 'cat /proc/loadavg';
+        const simpleDiskCommand = 'df -h / | tail -n 1';
+        
+        try {
+          const memResult = await SSHClient.executeCommand(connectionId, simpleMemCommand);
+          console.log(`[${connectionId}] Basit MEM komut çıktısı:`, memResult);
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `Basit MEM komutu çalıştı: ${memResult?.substring(0, 100)}...`
+          });
+        } catch (memError) {
+          console.error(`[${connectionId}] Basit MEM komut hatası:`, memError.message);
+        }
+        
+        try {
+          const cpuResult = await SSHClient.executeCommand(connectionId, simpleCpuCommand);
+          console.log(`[${connectionId}] Basit CPU komut çıktısı:`, cpuResult);
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `Basit CPU komutu çalıştı: ${cpuResult?.substring(0, 100)}...`
+          });
+        } catch (cpuError) {
+          console.error(`[${connectionId}] Basit CPU komut hatası:`, cpuError.message);
+        }
+        
+        try {
+          const diskResult = await SSHClient.executeCommand(connectionId, simpleDiskCommand);
+          console.log(`[${connectionId}] Basit Disk komut çıktısı:`, diskResult);
+          mainWindow.webContents.send('remote-system-info-update', {
+            connectionId,
+            debug: `Basit Disk komutu çalıştı: ${diskResult?.substring(0, 100)}...`
+          });
+        } catch (diskError) {
+          console.error(`[${connectionId}] Basit Disk komut hatası:`, diskError.message);
+        }
+      } catch (error) {
+        console.error(`[${connectionId}] Basit komutlar da başarısız:`, error.message);
+        mainWindow.webContents.send('remote-system-info-update', {
+          connectionId,
+          debug: `Tüm komutlar başarısız: ${error.message}`
+        });
+      }
     }
 
     if (ramUsage || cpuUsage || diskUsage) {
@@ -480,6 +736,14 @@ ipcMain.handle('connect-ssh', async (event, connectionConfig) => {
     }
     connectionOsTypes.set(currentSshConnectionId, osType);
     console.warn(`[${currentSshConnectionId}] Detected OS type: ${osType}`); // Keep for debugging this new feature
+
+    // İlk debug mesajını gönder
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('remote-system-info-update', {
+        connectionId: currentSshConnectionId,
+        debug: `Bağlantı kuruldu - OS: ${osType.toUpperCase()} - Sistem bilgileri toplanıyor...`
+      });
+    }
 
     // İstatistik çekme interval'ını başlat
     if (!activeStatIntervals.has(currentSshConnectionId)) {

@@ -13,9 +13,18 @@ document.addEventListener('DOMContentLoaded', () => {
    * to the default "N/A" (Not Available) state.
    */
   const setDefaultStatusText = () => {
-    if (cpuElement) cpuElement.textContent = '💻 CPU: N/A';
+    if (cpuElement) cpuElement.textContent = '💻 Load: N/A';
     if (memElement) memElement.textContent = '🧠 MEM: N/A';
     if (diskElement) diskElement.textContent = '💾 Disk: N/A';
+  };
+
+  /**
+   * Shows debug information in the status bar
+   */
+  const showDebugInfo = (message) => {
+    if (cpuElement) cpuElement.textContent = `💻 Debug: ${message}`;
+    if (memElement) memElement.textContent = `🧠 Debug: Veri bekleniyor...`;
+    if (diskElement) diskElement.textContent = `💾 Debug: Sistem analizi...`;
   };
 
   if (!cpuElement || !memElement || !diskElement) {
@@ -39,17 +48,24 @@ document.addEventListener('DOMContentLoaded', () => {
    * @param {number} [data.disk] - Server Disk usage percentage.
    * @param {number} [data.diskTotalMB] - Total disk space on the server (MB).
    * @param {number} [data.diskUsedMB] - Used disk space on the server (MB).
+   * @param {string} [data.debug] - Debug message for troubleshooting.
+   * @param {string} [data.osType] - Operating system type.
    */
   if (window.api && window.api.onRemoteSystemInfoUpdate) {
     
     window.api.onRemoteSystemInfoUpdate((data) => {
       currentDisplayingConnectionId = data.connectionId;
+      
+      if (data.debug) {
+        showDebugInfo(data.debug);
+        return;
+      }
 
       if (cpuElement) {
         if (typeof data.cpu === 'number' && !isNaN(data.cpu)) {
-          cpuElement.textContent = `💻 Server CPU: ${data.cpu.toFixed(1)}%`;
+          cpuElement.textContent = `💻 Server Load: ${data.cpu.toFixed(1)}%`;
         } else {
-          cpuElement.textContent = '💻 Server CPU: N/A';
+          cpuElement.textContent = '💻 Server Load: N/A';
         }
       }
 

@@ -15,7 +15,10 @@
     <!-- Sidebar with saved connections -->
     <div class="sidebar">
       <div class="sidebar-header">
-        <h2>HBSSH</h2>
+        <div class="app-title-section">
+          <h2>HBSSH</h2>
+          <button id="themeSettingsBtn" class="btn btn-icon" title="Tema ve Özelleştirme">🎨</button>
+        </div>
         <button id="newConnectionBtn" class="btn btn-primary">New Connection</button>
       </div>
       <div class="connections-list" id="connectionsList">
@@ -145,6 +148,153 @@
     </div>
   </div>
 
+  <!-- Theme Settings Modal -->
+  <div class="modal" id="themeModal">
+    <div class="modal-content theme-modal-content">
+      <div class="modal-header">
+        <h2>🎨 Tema ve Özelleştirme</h2>
+        <span class="close-modal" id="closeThemeModal">&times;</span>
+      </div>
+      <div class="modal-body theme-modal-body">
+        <div class="theme-section">
+          <h3>🌈 Tema Seçimi</h3>
+          <div class="theme-options">
+            <div class="theme-option" data-theme="dark">
+              <div class="theme-preview dark-theme">
+                <div class="theme-header">Dark</div>
+                <div class="theme-content">
+                  <div class="theme-text">Klasik koyu tema</div>
+                  <div class="theme-terminal">$ ls -la</div>
+                </div>
+              </div>
+              <span class="theme-name">Dark</span>
+            </div>
+            
+            <div class="theme-option" data-theme="neon">
+              <div class="theme-preview neon-theme">
+                <div class="theme-header">Neon</div>
+                <div class="theme-content">
+                  <div class="theme-text">Neon renkler</div>
+                  <div class="theme-terminal">$ echo "glowing"</div>
+                </div>
+              </div>
+              <span class="theme-name">Neon</span>
+            </div>
+            
+            <div class="theme-option" data-theme="matrix">
+              <div class="theme-preview matrix-theme">
+                <div class="theme-header">Matrix</div>
+                <div class="theme-content">
+                  <div class="theme-text">Matrix stilinde</div>
+                  <div class="theme-terminal">$ hack world</div>
+                </div>
+              </div>
+              <span class="theme-name">Matrix</span>
+            </div>
+            
+            <div class="theme-option" data-theme="cyberpunk">
+              <div class="theme-preview cyberpunk-theme">
+                <div class="theme-header">Cyberpunk</div>
+                <div class="theme-content">
+                  <div class="theme-text">Cyberpunk 2077</div>
+                  <div class="theme-terminal">$ netrun</div>
+                </div>
+              </div>
+              <span class="theme-name">Cyberpunk</span>
+            </div>
+            
+            <div class="theme-option" data-theme="ocean">
+              <div class="theme-preview ocean-theme">
+                <div class="theme-header">Ocean</div>
+                <div class="theme-content">
+                  <div class="theme-text">Okyanus mavisi</div>
+                  <div class="theme-terminal">$ wave --deep</div>
+                </div>
+              </div>
+              <span class="theme-name">Ocean</span>
+            </div>
+            
+            <div class="theme-option" data-theme="sunset">
+              <div class="theme-preview sunset-theme">
+                <div class="theme-header">Sunset</div>
+                <div class="theme-content">
+                  <div class="theme-text">Gün batımı</div>
+                  <div class="theme-terminal">$ sunset --orange</div>
+                </div>
+              </div>
+              <span class="theme-name">Sunset</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="theme-section">
+          <h3>⚙️ Terminal Özelleştirme</h3>
+          <div class="theme-customization">
+            <label class="theme-checkbox">
+              <input type="checkbox" id="enablePromptStyling">
+              <span class="checkmark"></span>
+              Prompt Renklendirme
+            </label>
+            
+            <label class="theme-checkbox">
+              <input type="checkbox" id="enableOutputHighlighting">
+              <span class="checkmark"></span>
+              Komut Renklendirme
+            </label>
+            
+            <label class="theme-checkbox">
+              <input type="checkbox" id="enableAnimations">
+              <span class="checkmark"></span>
+              Animasyonlar
+            </label>
+            
+            <label class="theme-checkbox">
+              <input type="checkbox" id="enableParticles">
+              <span class="checkmark"></span>
+              Parçacık Efektleri
+            </label>
+            
+            <label class="theme-checkbox">
+              <input type="checkbox" id="enableGlowEffects">
+              <span class="checkmark"></span>
+              Işık Efektleri
+            </label>
+          </div>
+        </div>
+        
+        <div class="theme-section">
+          <h3>🔧 Gelişmiş Ayarlar</h3>
+          <div class="theme-advanced">
+            <div class="theme-setting">
+              <label for="terminalOpacity">Terminal Şeffaflığı:</label>
+              <input type="range" id="terminalOpacity" min="0.3" max="1" step="0.1" value="0.9">
+              <span id="opacityValue">90%</span>
+            </div>
+            
+            <div class="theme-setting">
+              <label for="fontSize">Font Boyutu:</label>
+              <input type="range" id="fontSize" min="10" max="20" step="1" value="14">
+              <span id="fontSizeValue">14px</span>
+            </div>
+            
+            <div class="theme-setting">
+              <label for="cursorStyle">Cursor Stili:</label>
+              <select id="cursorStyle">
+                <option value="block">Block</option>
+                <option value="underline">Underline</option>
+                <option value="bar">Bar</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button id="resetThemeBtn" class="btn btn-secondary">🔄 Sıfırla</button>
+        <button id="applyThemeBtn" class="btn btn-primary">✅ Uygula</button>
+      </div>
+    </div>
+  </div>
+
   <!-- File Editor Modal -->
   <div class="modal" id="fileEditorModal">
     <div class="modal-content editor-modal-content">
@@ -164,6 +314,7 @@
   </div>
 
   <script type="module" src="./js/app.js"></script>
+  <script type="module" src="./js/theme-manager.js"></script>
   <script src="./js/status-bar.js"></script>
   <script type="module" src="./js/sftp-browser.js"></script>
   <script type="module" src="./js/file-editor.js"></script>
