@@ -183,6 +183,9 @@ export class TerminalManager {
     if (window.themeManager) {
       terminalElement.classList.add(window.themeManager.currentTheme + '-theme');
       terminalElement.style.opacity = window.themeManager.settings.terminalOpacity || 0.9;
+      
+      // Terminal instance'ı global tema ayarlarına bağla
+      terminalElement.classList.add('terminal-instance');
     }
     this.terminals[id] = {
       terminal,
@@ -293,7 +296,36 @@ export class TerminalManager {
     const keyCode = data.charCodeAt(0);
     
     if (keyCode === 9) {
-      this.handleAutoCompletion(id);
+      console.log('⌨️ Tab tuşuna basıldı, auto-completion başlatılıyor');
+      
+      // Mevcut satırı kontrol et
+      const currentLine = this.currentLine[id] || '';
+      console.log(`🔍 AutoComplete: id=${id}, line="${currentLine}"`);
+      
+      // Eğer hiç komut yazılmamışsa veya sadece boşluk varsa, shell'e tab gönder
+      if (!currentLine || currentLine.trim() === '') {
+        console.log('💨 Boş satır - tab karakterini shell\'e gönder');
+        if (terminalInstance.sshConnectionId) {
+          await window.api.writeSSH(terminalInstance.sshConnectionId, '\t');
+        }
+        return;
+      }
+      
+      const words = currentLine.trim().split(/\s+/);
+      const firstWord = words[0];
+      
+      // Eğer sadece komut adı yazılıyorsa (tek kelime), kendi sistemimizi kullan
+      if (words.length === 1) {
+        console.log('🎯 Komut adı tamamlanıyor, kendi sistemimizi kullan');
+        this.handleAutoCompletion(id);
+        return;
+      }
+      
+      // Eğer komut + argüman varsa (dosya/klasör adı), shell'e tab gönder
+      console.log('📁 Dosya/klasör adı tamamlanıyor, tab karakterini shell\'e gönder');
+      if (terminalInstance.sshConnectionId) {
+        await window.api.writeSSH(terminalInstance.sshConnectionId, '\t');
+      }
       return;
     }
     
@@ -319,10 +351,13 @@ export class TerminalManager {
       this.currentLine[id] = '';
       this.historyPosition[id] = -1;
       this.hideSuggestions();
+      console.log('🔄 Enter tuşu: komut girişi tamamlandı, suggestion box gizlendi');
     } else if (keyCode === 127 || keyCode === 8) {
       this.currentLine[id] = this.currentLine[id].slice(0, -1);
+      console.log(`⌫ Backspace: "${this.currentLine[id]}"`);
     } else if (keyCode >= 32 && keyCode <= 126) {
       this.currentLine[id] += data;
+      console.log(`✏️ +${data}: "${this.currentLine[id]}"`);
     }
     
     if (!terminalInstance.sshConnectionId) {
@@ -792,17 +827,29 @@ export class TerminalManager {
     const terminalInstance = this.terminals[id];
     if (!terminalInstance || !terminalInstance.sshConnectionId) return;
     
-    const currentLine = this.currentLine[id];
-    if (!currentLine) return;
+    const currentLine = this.currentLine[id] || '';
+    console.log(`🔍 AutoComplete: id=${id}, line="${currentLine}"`);
+    
+    if (!currentLine) {
+      console.log('❌ CurrentLine boş, auto-completion iptal');
+      return;
+    }
     
     const words = currentLine.split(' ');
     const lastWord = words[words.length - 1];
     
-    if (lastWord.length === 0) return;
+    console.log(`📝 LastWord: "${lastWord}"`);
+    
+    if (lastWord.length === 0) {
+      console.log('❌ Son kelime boş, auto-completion iptal');
+      return;
+    }
     
     const matches = this.commonCommands.filter(cmd => 
       cmd.toLowerCase().startsWith(lastWord.toLowerCase())
     );
+    
+    console.log(`🎯 Matches (${matches.length}):`, matches.slice(0, 5));
     
     if (matches.length === 1) {
       const completion = matches[0].substring(lastWord.length);
@@ -979,6 +1026,12 @@ export class TerminalManager {
       this.suggestionBox.remove();
       this.suggestionBox = null;
     }
+    
+    // Tüm terminal-suggestions elementlerini kaldır (güvenlik için)
+    const allSuggestions = document.querySelectorAll('.terminal-suggestions');
+    allSuggestions.forEach(element => {
+      element.remove();
+    });
   }
 
   /**

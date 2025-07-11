@@ -12,6 +12,141 @@
   --success-color: #13a10e;
 }
 
+/* =========================
+   TEMA GLOBAL DEĞİŞKENLERİ
+   ========================= */
+
+/* Dark Theme Variables */
+.app-container.dark-theme {
+  --bg-color: #1e1e1e;
+  --sidebar-bg: #252526;
+  --primary-color: #0078d4;
+  --secondary-color: #3a3a3a;
+  --text-color: #e1e1e1;
+  --text-muted: #a1a1a1;
+  --border-color: #3a3a3a;
+  --tab-active: #1e1e1e;
+  --tab-inactive: #2d2d2d;
+  --danger-color: #f14c4c;
+  --success-color: #13a10e;
+  --accent-color: #0078d4;
+  --highlight-color: #404040;
+}
+
+/* Neon Theme Variables */
+.app-container.neon-theme {
+  --bg-color: #0a0a0a;
+  --sidebar-bg: #0f0f0f;
+  --primary-color: #ff00ff;
+  --secondary-color: #1a0a1a;
+  --text-color: #00ffff;
+  --text-muted: #ff00aa;
+  --border-color: #ff00ff;
+  --tab-active: #1a0a1a;
+  --tab-inactive: #0f0f0f;
+  --danger-color: #ff0040;
+  --success-color: #00ff41;
+  --accent-color: #ff00ff;
+  --highlight-color: #2a0a2a;
+}
+
+.app-container.neon-theme {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a0a1a 100%);
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* Matrix Theme Variables */
+.app-container.matrix-theme {
+  --bg-color: #000000;
+  --sidebar-bg: #001100;
+  --primary-color: #00ff00;
+  --secondary-color: #003300;
+  --text-color: #00ff00;
+  --text-muted: #00aa00;
+  --border-color: #00ff00;
+  --tab-active: #001100;
+  --tab-inactive: #000000;
+  --danger-color: #ff0000;
+  --success-color: #00ff00;
+  --accent-color: #00ff41;
+  --highlight-color: #002200;
+}
+
+.app-container.matrix-theme {
+  background: linear-gradient(135deg, #000000 0%, #001100 100%);
+  text-shadow: 0 0 5px currentColor;
+  animation: matrix-pulse 3s ease-in-out infinite alternate;
+}
+
+@keyframes matrix-pulse {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.1); }
+}
+
+/* Cyberpunk Theme Variables */
+.app-container.cyberpunk-theme {
+  --bg-color: #0f0f0f;
+  --sidebar-bg: #1a0a2e;
+  --primary-color: #f39c12;
+  --secondary-color: #16213e;
+  --text-color: #f39c12;
+  --text-muted: #e67e22;
+  --border-color: #e74c3c;
+  --tab-active: #1a0a2e;
+  --tab-inactive: #0f0f0f;
+  --danger-color: #e74c3c;
+  --success-color: #27ae60;
+  --accent-color: #e74c3c;
+  --highlight-color: #2c1810;
+}
+
+.app-container.cyberpunk-theme {
+  background: linear-gradient(135deg, #0f0f0f 0%, #1a0a2e 50%, #16213e 100%);
+  text-shadow: 0 0 5px currentColor;
+}
+
+/* Ocean Theme Variables */
+.app-container.ocean-theme {
+  --bg-color: #001f3f;
+  --sidebar-bg: #002b54;
+  --primary-color: #39cccc;
+  --secondary-color: #003d66;
+  --text-color: #7fdbff;
+  --text-muted: #5bc0de;
+  --border-color: #39cccc;
+  --tab-active: #002b54;
+  --tab-inactive: #001f3f;
+  --danger-color: #ff4136;
+  --success-color: #2ecc40;
+  --accent-color: #39cccc;
+  --highlight-color: #004d7a;
+}
+
+.app-container.ocean-theme {
+  background: linear-gradient(135deg, #001f3f 0%, #0074d9 100%);
+}
+
+/* Sunset Theme Variables */
+.app-container.sunset-theme {
+  --bg-color: #2c1810;
+  --sidebar-bg: #3d2318;
+  --primary-color: #ffe66d;
+  --secondary-color: #ff7f50;
+  --text-color: #ffffff;
+  --text-muted: #ffb347;
+  --border-color: #ff6b6b;
+  --tab-active: #3d2318;
+  --tab-inactive: #2c1810;
+  --danger-color: #ff6b6b;
+  --success-color: #4ecdc4;
+  --accent-color: #ffe66d;
+  --highlight-color: #4a2c1c;
+}
+
+.app-container.sunset-theme {
+  background: linear-gradient(135deg, #ff7f50 0%, #ff6b6b 50%, #4ecdc4 100%);
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -931,13 +1066,14 @@ input, select {
 
 /* Parçacık Efektleri */
 .particles-container {
-  position: absolute;
+  position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   overflow: hidden;
+  z-index: 1;
 }
 
 .particle {
@@ -963,6 +1099,130 @@ input, select {
   }
   100% {
     transform: translateY(-10px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Tema-Specific Parçacık Efektleri */
+.app-container.neon-theme .particle {
+  animation: neon-float 2s linear infinite;
+}
+
+@keyframes neon-float {
+  0% {
+    transform: translateY(100vh) rotate(0deg) scale(0.5);
+    opacity: 0;
+    box-shadow: 0 0 5px currentColor;
+  }
+  10% {
+    opacity: 1;
+    box-shadow: 0 0 10px currentColor;
+  }
+  90% {
+    opacity: 1;
+    box-shadow: 0 0 15px currentColor;
+  }
+  100% {
+    transform: translateY(-10px) rotate(360deg) scale(1.2);
+    opacity: 0;
+    box-shadow: 0 0 20px currentColor;
+  }
+}
+
+.app-container.matrix-theme .particle {
+  animation: matrix-fall 4s linear infinite;
+}
+
+@keyframes matrix-fall {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+.app-container.cyberpunk-theme .particle {
+  animation: cyberpunk-drift 3s ease-in-out infinite;
+}
+
+@keyframes cyberpunk-drift {
+  0% {
+    transform: translateY(100vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.8;
+  }
+  50% {
+    transform: translateY(50vh) translateX(20px) rotate(180deg);
+    opacity: 1;
+  }
+  90% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-10px) translateX(-20px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.app-container.ocean-theme .particle {
+  animation: ocean-wave 4s ease-in-out infinite;
+}
+
+@keyframes ocean-wave {
+  0% {
+    transform: translateY(100vh) translateX(0) rotate(0deg);
+    opacity: 0;
+  }
+  25% {
+    transform: translateY(75vh) translateX(10px) rotate(90deg);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translateY(50vh) translateX(-10px) rotate(180deg);
+    opacity: 0.8;
+  }
+  75% {
+    transform: translateY(25vh) translateX(15px) rotate(270deg);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateY(-10px) translateX(0) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+.app-container.sunset-theme .particle {
+  animation: sunset-glow 3s ease-out infinite;
+}
+
+@keyframes sunset-glow {
+  0% {
+    transform: translateY(100vh) scale(0.3);
+    opacity: 0;
+  }
+  20% {
+    opacity: 0.6;
+  }
+  50% {
+    transform: translateY(50vh) scale(1);
+    opacity: 1;
+  }
+  80% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateY(-10px) scale(0.5);
     opacity: 0;
   }
 }
@@ -993,4 +1253,218 @@ input, select {
   100% {
     box-shadow: 0 0 30px var(--primary-color);
   }
+}
+
+/* =========================
+   TEMA-SPECIFIC EFEKTLER
+   ========================= */
+
+/* Neon Theme Efektleri */
+.app-container.neon-theme .btn,
+.app-container.neon-theme .connection-item,
+.app-container.neon-theme .tab,
+.app-container.neon-theme .sftp-action-btn {
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+  border: 1px solid var(--primary-color);
+}
+
+.app-container.neon-theme .btn:hover,
+.app-container.neon-theme .connection-item:hover,
+.app-container.neon-theme .tab:hover,
+.app-container.neon-theme .sftp-action-btn:hover {
+  box-shadow: 0 0 20px rgba(255, 0, 255, 0.6);
+  text-shadow: 0 0 8px currentColor;
+}
+
+.app-container.neon-theme .sidebar-header h2 {
+  text-shadow: 0 0 15px var(--primary-color);
+  animation: neon-flicker 2s ease-in-out infinite alternate;
+}
+
+@keyframes neon-flicker {
+  0% { text-shadow: 0 0 15px var(--primary-color); }
+  100% { text-shadow: 0 0 25px var(--primary-color), 0 0 35px var(--primary-color); }
+}
+
+/* Matrix Theme Efektleri */
+.app-container.matrix-theme .btn,
+.app-container.matrix-theme .connection-item,
+.app-container.matrix-theme .tab,
+.app-container.matrix-theme .sftp-action-btn {
+  border: 1px solid var(--primary-color);
+  background: linear-gradient(135deg, transparent 0%, rgba(0, 255, 0, 0.1) 50%, transparent 100%);
+}
+
+.app-container.matrix-theme .sidebar-header h2 {
+  font-family: 'Courier New', monospace;
+  text-shadow: 0 0 10px var(--primary-color);
+  animation: matrix-text-flicker 1.5s ease-in-out infinite;
+}
+
+@keyframes matrix-text-flicker {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.8; }
+}
+
+/* Cyberpunk Theme Efektleri */
+.app-container.cyberpunk-theme .btn,
+.app-container.cyberpunk-theme .connection-item,
+.app-container.cyberpunk-theme .tab,
+.app-container.cyberpunk-theme .sftp-action-btn {
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--highlight-color) 100%);
+  border: 1px solid var(--accent-color);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-container.cyberpunk-theme .btn::before,
+.app-container.cyberpunk-theme .connection-item::before,
+.app-container.cyberpunk-theme .tab::before,
+.app-container.cyberpunk-theme .sftp-action-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(231, 76, 60, 0.3), transparent);
+  transition: left 0.6s;
+}
+
+.app-container.cyberpunk-theme .btn:hover::before,
+.app-container.cyberpunk-theme .connection-item:hover::before,
+.app-container.cyberpunk-theme .tab:hover::before,
+.app-container.cyberpunk-theme .sftp-action-btn:hover::before {
+  left: 100%;
+}
+
+.app-container.cyberpunk-theme .sidebar-header h2 {
+  text-shadow: 0 0 10px var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Ocean Theme Efektleri */
+.app-container.ocean-theme .btn,
+.app-container.ocean-theme .connection-item,
+.app-container.ocean-theme .tab,
+.app-container.ocean-theme .sftp-action-btn {
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--highlight-color) 100%);
+  border: 1px solid var(--primary-color);
+  box-shadow: 0 2px 10px rgba(57, 204, 204, 0.2);
+}
+
+.app-container.ocean-theme .btn:hover,
+.app-container.ocean-theme .connection-item:hover,
+.app-container.ocean-theme .tab:hover,
+.app-container.ocean-theme .sftp-action-btn:hover {
+  box-shadow: 0 4px 20px rgba(57, 204, 204, 0.4);
+  transform: translateY(-2px);
+}
+
+.app-container.ocean-theme .sidebar-header h2 {
+  color: var(--accent-color);
+  text-shadow: 0 0 8px var(--primary-color);
+}
+
+/* Sunset Theme Efektleri */
+.app-container.sunset-theme .btn,
+.app-container.sunset-theme .connection-item,
+.app-container.sunset-theme .tab,
+.app-container.sunset-theme .sftp-action-btn {
+  background: linear-gradient(135deg, var(--secondary-color) 0%, var(--highlight-color) 100%);
+  border: 1px solid var(--primary-color);
+  box-shadow: 0 2px 10px rgba(255, 230, 109, 0.3);
+}
+
+.app-container.sunset-theme .btn:hover,
+.app-container.sunset-theme .connection-item:hover,
+.app-container.sunset-theme .tab:hover,
+.app-container.sunset-theme .sftp-action-btn:hover {
+  box-shadow: 0 4px 20px rgba(255, 230, 109, 0.5);
+  transform: translateY(-2px);
+}
+
+.app-container.sunset-theme .sidebar-header h2 {
+  color: var(--accent-color);
+  text-shadow: 0 0 8px var(--primary-color);
+}
+
+/* Modal Tema Efektleri */
+.app-container.neon-theme .modal-content {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 30px rgba(255, 0, 255, 0.5);
+}
+
+.app-container.matrix-theme .modal-content {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 30px rgba(0, 255, 0, 0.3);
+}
+
+.app-container.cyberpunk-theme .modal-content {
+  border: 2px solid var(--accent-color);
+  box-shadow: 0 0 30px rgba(231, 76, 60, 0.3);
+}
+
+.app-container.ocean-theme .modal-content {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 30px rgba(57, 204, 204, 0.3);
+}
+
+.app-container.sunset-theme .modal-content {
+  border: 2px solid var(--primary-color);
+  box-shadow: 0 0 30px rgba(255, 230, 109, 0.3);
+}
+
+/* SFTP Browser Tema Efektleri */
+.app-container.neon-theme .sftp-list li:hover {
+  background-color: var(--highlight-color);
+  box-shadow: 0 0 10px rgba(255, 0, 255, 0.3);
+  text-shadow: 0 0 5px currentColor;
+}
+
+.app-container.matrix-theme .sftp-list li:hover {
+  background-color: var(--highlight-color);
+  box-shadow: 0 0 10px rgba(0, 255, 0, 0.3);
+  text-shadow: 0 0 5px currentColor;
+}
+
+.app-container.cyberpunk-theme .sftp-list li:hover {
+  background-color: var(--highlight-color);
+  box-shadow: 0 0 10px rgba(231, 76, 60, 0.3);
+}
+
+.app-container.ocean-theme .sftp-list li:hover {
+  background-color: var(--highlight-color);
+  box-shadow: 0 0 10px rgba(57, 204, 204, 0.3);
+}
+
+.app-container.sunset-theme .sftp-list li:hover {
+  background-color: var(--highlight-color);
+  box-shadow: 0 0 10px rgba(255, 230, 109, 0.3);
+}
+
+/* Scrollbar Tema Efektleri */
+.app-container.neon-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 0 5px rgba(255, 0, 255, 0.5);
+}
+
+.app-container.matrix-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 0 5px rgba(0, 255, 0, 0.5);
+}
+
+.app-container.cyberpunk-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 0 5px rgba(231, 76, 60, 0.5);
+}
+
+.app-container.ocean-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 0 5px rgba(57, 204, 204, 0.5);
+}
+
+.app-container.sunset-theme ::-webkit-scrollbar-thumb {
+  background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+  box-shadow: 0 0 5px rgba(255, 230, 109, 0.5);
 }

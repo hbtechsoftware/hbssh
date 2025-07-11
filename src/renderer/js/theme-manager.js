@@ -293,7 +293,16 @@ export class ThemeManager {
   /**
    * Temayı uygulamaya uygular
    */
-  applyThemeToApp() {
+  applyThemeToApp(showNotification = true) {
+    // Ana app container'a tema sınıfı ekle
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+      // Tüm tema sınıflarını kaldır
+      appContainer.classList.remove('dark-theme', 'neon-theme', 'matrix-theme', 'cyberpunk-theme', 'ocean-theme', 'sunset-theme');
+      // Yeni tema sınıfını ekle
+      appContainer.classList.add(this.currentTheme + '-theme');
+    }
+    
     // Terminal instance'larını güncelle
     if (window.terminalManager) {
       Object.values(window.terminalManager.terminals).forEach(terminalInstance => {
@@ -342,7 +351,78 @@ export class ThemeManager {
       terminal.style.opacity = this.settings.terminalOpacity;
     });
     
-    console.log(`Tema uygulandı: ${this.currentTheme}`);
+    // Tema değişikliğini duyur (sadece kullanıcı değişikliği yapınca)
+    if (showNotification) {
+      this.announceThemeChange();
+    }
+    
+    console.log(`🎨 Tema uygulandı: ${this.currentTheme}`);
+  }
+  
+  /**
+   * Tema değişikliğini duyurur
+   */
+  announceThemeChange() {
+    const themeNames = {
+      'dark': 'Dark',
+      'neon': 'Neon 💜',
+      'matrix': 'Matrix 🟢',
+      'cyberpunk': 'Cyberpunk 🔥',
+      'ocean': 'Ocean 🌊',
+      'sunset': 'Sunset 🌅'
+    };
+    
+    // Bildiri göster
+    this.showNotification(`Tema değiştirildi: ${themeNames[this.currentTheme]}`);
+  }
+  
+  /**
+   * Bildiri gösterir
+   */
+  showNotification(message) {
+    // Mevcut bildiriyi kaldır
+    const existingNotification = document.getElementById('themeNotification');
+    if (existingNotification) {
+      existingNotification.remove();
+    }
+    
+    // Yeni bildiri oluştur
+    const notification = document.createElement('div');
+    notification.id = 'themeNotification';
+    notification.textContent = message;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: var(--primary-color);
+      color: white;
+      padding: 12px 20px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      z-index: 10000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      opacity: 0;
+      transform: translateX(100%);
+      transition: all 0.3s ease;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Animasyon
+    setTimeout(() => {
+      notification.style.opacity = '1';
+      notification.style.transform = 'translateX(0)';
+    }, 10);
+    
+    // Otomatik kaldır
+    setTimeout(() => {
+      notification.style.opacity = '0';
+      notification.style.transform = 'translateX(100%)';
+      setTimeout(() => {
+        notification.remove();
+      }, 300);
+    }, 3000);
   }
   
   /**
@@ -358,13 +438,47 @@ export class ThemeManager {
     
     document.body.appendChild(container);
     
+    // Tema renklerine göre parçacık renkleri
+    const particleColors = {
+      'dark': ['#0078d4', '#404040', '#606060'],
+      'neon': ['#ff00ff', '#00ffff', '#ff0080'],
+      'matrix': ['#00ff00', '#00ff41', '#00cc00'],
+      'cyberpunk': ['#f39c12', '#e74c3c', '#e67e22'],
+      'ocean': ['#39cccc', '#7fdbff', '#0074d9'],
+      'sunset': ['#ffe66d', '#ff6b6b', '#ff7f50']
+    };
+    
+    const colors = particleColors[this.currentTheme] || particleColors['dark'];
+    
+    // Parçacık sayısını temaya göre ayarla
+    const particleCount = this.currentTheme === 'neon' || this.currentTheme === 'matrix' ? 30 : 20;
+    
     // Parçacık oluştur
-    for (let i = 0; i < 20; i++) {
+    for (let i = 0; i < particleCount; i++) {
       const particle = document.createElement('div');
       particle.className = 'particle';
       particle.style.left = Math.random() * 100 + '%';
       particle.style.animationDelay = Math.random() * 3 + 's';
       particle.style.animationDuration = (Math.random() * 3 + 2) + 's';
+      
+      // Rastgele renk seç
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      particle.style.backgroundColor = color;
+      
+      // Tema-specific özellikler
+      if (this.currentTheme === 'neon') {
+        particle.style.boxShadow = `0 0 10px ${color}`;
+        particle.style.borderRadius = '50%';
+      } else if (this.currentTheme === 'matrix') {
+        particle.style.boxShadow = `0 0 8px ${color}`;
+        particle.style.borderRadius = '0';
+        particle.style.width = '1px';
+        particle.style.height = '4px';
+      } else if (this.currentTheme === 'cyberpunk') {
+        particle.style.boxShadow = `0 0 6px ${color}`;
+        particle.style.borderRadius = '2px';
+      }
+      
       container.appendChild(particle);
     }
   }
@@ -383,7 +497,28 @@ export class ThemeManager {
    * Başlangıçta temayı uygular
    */
   initializeTheme() {
-    this.applyThemeToApp();
+    // Kaydedilen tema ayarlarını yükle
+    this.loadSettings();
+    
+    // Kaydedilen tema yoksa dark tema kullan
+    if (!this.currentTheme || !this.themeConfigs[this.currentTheme]) {
+      this.currentTheme = 'dark';
+      this.settings.theme = 'dark';
+    }
+    
+    // Başlangıçta herhangi bir tema sınıfını ekle
+    const appContainer = document.querySelector('.app-container');
+    if (appContainer) {
+      // Önce tüm tema sınıflarını kaldır
+      appContainer.classList.remove('dark-theme', 'neon-theme', 'matrix-theme', 'cyberpunk-theme', 'ocean-theme', 'sunset-theme');
+      // Kaydedilen temayı uygula
+      appContainer.classList.add(this.currentTheme + '-theme');
+    }
+    
+    // Tema ayarlarını uygula (bildiri gösterme)
+    this.applyThemeToApp(false);
+    
+    console.log(`🎨 Başlangıç teması yüklendi: ${this.currentTheme}`);
   }
   
   /**
