@@ -3,15 +3,11 @@ const path = require('path');
 const Store = require('electron-store');
 const SSHClient = require('./src/common/ssh-client');
 const SFTPClient = require('./src/common/sftp-client');
-const LocalTerminal = require('./src/common/local-terminal');
-const SimpleTerminal = require('./src/common/simple-terminal');
 const os = require('os');
 
 const store = new Store();
 
 let mainWindow;
-let localTerminal;
-let simpleTerminal;
 
 const activeStatIntervals = new Map();
 const connectionOsTypes = new Map(); // Stores OS type for each connectionId
@@ -528,7 +524,7 @@ function createWindow() {
       enableRemoteModule: false,
       preload: path.join(__dirname, 'src/preload/preload.js')
     },
-    icon: path.join(__dirname, 'ssh-logo.icns')
+    icon: path.join(__dirname, 'resources/icon.png')
   });
 
   // Load the index.html of the app
@@ -606,10 +602,6 @@ function createWindow() {
 // initialization and is ready to create browser windows.
 app.whenReady().then(() => {
   createWindow();
-  
-  // Initialize local terminal
-  localTerminal = new LocalTerminal();
-  simpleTerminal = new SimpleTerminal();
 
   app.on('activate', function () {
     // On macOS it's common to re-create a window in the app when the
@@ -624,13 +616,6 @@ app.on('window-all-closed', function () {
   SSHClient.closeAll();
   // Close all SFTP connections before quitting
   SFTPClient.closeAll();
-  // Close all local terminals before quitting
-  if (localTerminal) {
-    localTerminal.cleanup();
-  }
-  if (simpleTerminal) {
-    simpleTerminal.cleanup();
-  }
   
   if (process.platform !== 'darwin') app.quit();
 });
@@ -1291,60 +1276,6 @@ ipcMain.handle('sftp-write-file', async (event, { connectionId, remoteFilePath, 
     return { success: true };
   } catch (error) {
     console.error(`[${sshConnectionId || connectionId}] Error writing remote file ${remoteFilePath}:`, error);
-    return { success: false, error: error.message };
-  }
-});
-
-// Local Terminal IPC Handlers
-ipcMain.handle('spawn-local-terminal', async (event, options) => {
-  try {
-    const result = simpleTerminal.create(options);
-    
-    if (result.success) {
-      // Set up data handler
-      simpleTerminal.setDataHandler(result.terminalId, (data) => {
-        mainWindow.webContents.send('local-terminal-data', result.terminalId, data);
-      });
-      
-      // Set up exit handler
-      simpleTerminal.setExitHandler(result.terminalId, (code) => {
-        mainWindow.webContents.send('local-terminal-exit', result.terminalId, code);
-      });
-    }
-    
-    return result;
-  } catch (error) {
-    console.error('Error spawning local terminal:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('write-local-terminal', async (event, terminalId, data) => {
-  try {
-    const result = simpleTerminal.write(terminalId, data);
-    return result;
-  } catch (error) {
-    console.error('Error writing to local terminal:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('resize-local-terminal', async (event, terminalId, cols, rows) => {
-  try {
-    const result = simpleTerminal.resize(terminalId, cols, rows);
-    return result;
-  } catch (error) {
-    console.error('Error resizing local terminal:', error);
-    return { success: false, error: error.message };
-  }
-});
-
-ipcMain.handle('kill-local-terminal', async (event, terminalId) => {
-  try {
-    const result = simpleTerminal.kill(terminalId);
-    return result;
-  } catch (error) {
-    console.error('Error killing local terminal:', error);
     return { success: false, error: error.message };
   }
 }); 

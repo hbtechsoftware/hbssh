@@ -13,8 +13,6 @@ export class TerminalManager {
     this.activeTerminalId = null;
     /** @type {Object<string, string>} Mapping from SSH connection ID to terminal ID. */
     this.sshConnections = {};
-    /** @type {Object<string, string>} Mapping from local terminal ID to terminal ID. */
-    this.localTerminals = {};
     /** @type {Object<string, number>} Reconnection timers for each terminal. */
     this.reconnectTimers = {};
     /** @type {Object<string, number>} Reconnection attempt counter for each terminal. */
@@ -70,15 +68,6 @@ export class TerminalManager {
     window.api.onSSHData(this.handleSSHData);
     window.api.onSSHClose(this.handleSSHClose);
     window.api.onSSHError(this.handleSSHError);
-    
-    // Local terminal event listeners
-    window.api.onLocalTerminalData((localTerminalId, data) => {
-      this.handleLocalTerminalData(localTerminalId, data);
-    });
-    window.api.onLocalTerminalExit((localTerminalId, exitCode) => {
-      this.handleLocalTerminalExit(localTerminalId, exitCode);
-    });
-    
     document.addEventListener('keydown', this.handleKeyboardEvent);
   }
   
@@ -148,7 +137,7 @@ export class TerminalManager {
   }
   
   /**
-   * Creates a new terminal instance and initiates an SSH connection or local terminal.
+   * Creates a new terminal instance and initiates an SSH connection.
    * @param {Object} connection - The connection configuration object.
    * @param {string} tabId - The ID of the tab to which the terminal belongs.
    * @returns {Promise<Object|null>} The terminal instance, or null in case of an error.
@@ -203,10 +192,8 @@ export class TerminalManager {
       fitAddon,
       connection,
       sshConnectionId: null,
-      localTerminalId: null,
       buffer: [],
-      reconnecting: false,
-      isLocal: connection.type === 'local'
+      reconnecting: false
     };
     
     this.commandHistory[id] = [];
@@ -216,14 +203,7 @@ export class TerminalManager {
     terminal.onData((data) => {
       this.handleTerminalInput(id, data);
     });
-    
-    // Initialize connection based on type
-    if (connection.type === 'local') {
-      await this.initLocalTerminal(id);
-    } else {
-      await this.initSSHConnection(id);
-    }
-    
+    await this.initSSHConnection(id);
     this.setActiveTerminal(id);
     setTimeout(() => {
       this.fitTerminal(id);
@@ -265,8 +245,6 @@ export class TerminalManager {
         if (dimensions) {
           await window.api.resizeSSH(result.connectionId, dimensions.cols, dimensions.rows);
         }
-        
-        // Don't send any disable commands - just filter the output instead
       } else {
         terminal.writeln(`\r\nConnection failed: ${result.error}`);
         this.scheduleReconnect(id);
@@ -307,68 +285,7 @@ export class TerminalManager {
   }
   
   /**
-   * Initializes a local terminal connection for the specified terminal ID.
-   * @param {string} id - The terminal ID.
-   */
-  async initLocalTerminal(id) {
-    const terminalInstance = this.terminals[id];
-    if (!terminalInstance) return;
-    
-    const { terminal, connection } = terminalInstance;
-    terminal.writeln('Starting local terminal...');
-    
-    try {
-      const dimensions = this.getTerminalDimensions(id);
-      const options = {
-        cols: dimensions.cols,
-        rows: dimensions.rows,
-        cwd: connection.cwd || undefined,
-        shell: connection.shell || undefined,
-        env: connection.env || undefined
-      };
-      
-      const result = await window.api.spawnLocalTerminal(options);
-      
-      if (result.success) {
-        terminalInstance.localTerminalId = result.terminalId;
-        this.localTerminals[result.terminalId] = id;
-        terminal.writeln(`Local terminal started (PID: ${result.pid})`);
-        
-        // Process any buffered data
-        if (terminalInstance.buffer.length > 0) {
-          for (const bufferedData of terminalInstance.buffer) {
-            try {
-              await window.api.writeLocalTerminal(result.terminalId, bufferedData);
-            } catch (error) {
-              console.error('Error writing buffered data:', error);
-            }
-          }
-          terminalInstance.buffer = [];
-        }
-        
-        // Process any buffered data after a short delay
-        setTimeout(async () => {
-          if (terminalInstance.buffer.length > 0) {
-            for (const bufferedData of terminalInstance.buffer) {
-              try {
-                await window.api.writeLocalTerminal(result.terminalId, bufferedData);
-              } catch (error) {
-                console.error('Error processing buffered data:', error);
-              }
-            }
-            terminalInstance.buffer = [];
-          }
-        }, 200);
-      } else {
-        terminal.writeln(`\r\nFailed to start local terminal: ${result.error}`);
-      }
-    } catch (error) {
-      terminal.writeln(`\r\nLocal terminal error: ${error.message}`);
-    }
-  }
-
-  /**
-   * Handles user input from the terminal and forwards it to the SSH connection or local terminal.
+   * Handles user input from the terminal and forwards it to the SSH connection.
    * @param {string} id - The terminal ID.
    * @param {string} data - The data from the user.
    */
@@ -379,32 +296,35 @@ export class TerminalManager {
     const keyCode = data.charCodeAt(0);
     
     if (keyCode === 9) {
+      console.log('⌨️ Tab tuşuna basıldı, auto-completion başlatılıyor');
+      
       // Mevcut satırı kontrol et
       const currentLine = this.currentLine[id] || '';
+      console.log(`🔍 AutoComplete: id=${id}, line="${currentLine}"`);
       
       // Eğer hiç komut yazılmamışsa veya sadece boşluk varsa, shell'e tab gönder
       if (!currentLine || currentLine.trim() === '') {
+        console.log('💨 Boş satır - tab karakterini shell\'e gönder');
         if (terminalInstance.sshConnectionId) {
           await window.api.writeSSH(terminalInstance.sshConnectionId, '\t');
-        } else if (terminalInstance.localTerminalId) {
-          await window.api.writeLocalTerminal(terminalInstance.localTerminalId, '\t');
         }
         return;
       }
       
       const words = currentLine.trim().split(/\s+/);
+      const firstWord = words[0];
       
       // Eğer sadece komut adı yazılıyorsa (tek kelime), kendi sistemimizi kullan
       if (words.length === 1) {
+        console.log('🎯 Komut adı tamamlanıyor, kendi sistemimizi kullan');
         this.handleAutoCompletion(id);
         return;
       }
       
       // Eğer komut + argüman varsa (dosya/klasör adı), shell'e tab gönder
+      console.log('📁 Dosya/klasör adı tamamlanıyor, tab karakterini shell\'e gönder');
       if (terminalInstance.sshConnectionId) {
         await window.api.writeSSH(terminalInstance.sshConnectionId, '\t');
-      } else if (terminalInstance.localTerminalId) {
-        await window.api.writeLocalTerminal(terminalInstance.localTerminalId, '\t');
       }
       return;
     }
@@ -423,9 +343,7 @@ export class TerminalManager {
       }
     }
     
-    // Handle special keys first
     if (keyCode === 13) {
-      // Enter tuşu - komut geçmişine ekle ve buffer'ı temizle
       const command = this.cleanCommand(this.currentLine[id]);
       if (command && command.length > 0) {
         this.addToHistory(id, command);
@@ -433,54 +351,25 @@ export class TerminalManager {
       this.currentLine[id] = '';
       this.historyPosition[id] = -1;
       this.hideSuggestions();
+      console.log('🔄 Enter tuşu: komut girişi tamamlandı, suggestion box gizlendi');
     } else if (keyCode === 127 || keyCode === 8) {
-      // Backspace/Delete tuşu - local buffer'ı güncelle
-      if (this.currentLine[id] && this.currentLine[id].length > 0) {
-        this.currentLine[id] = this.currentLine[id].slice(0, -1);
-      }
+      this.currentLine[id] = this.currentLine[id].slice(0, -1);
+      console.log(`⌫ Backspace: "${this.currentLine[id]}"`);
     } else if (keyCode >= 32 && keyCode <= 126) {
-      // Normal karakterler - local buffer'a ekle
       this.currentLine[id] += data;
+      console.log(`✏️ +${data}: "${this.currentLine[id]}"`);
     }
     
-    // Handle local terminal
-    if (terminalInstance.isLocal) {
-      if (!terminalInstance.localTerminalId) {
-        terminalInstance.buffer.push(data);
-        return;
-      }
-      
-      try {
-        await window.api.writeLocalTerminal(terminalInstance.localTerminalId, data);
-      } catch (error) {
-        console.error('Failed to send data to local terminal:', error);
-        terminalInstance.buffer.push(data);
-      }
-      return;
-    }
-    
-    // Handle SSH connection - send the original data as-is
     if (!terminalInstance.sshConnectionId) {
       terminalInstance.buffer.push(data);
       return;
     }
     
-    // SSH için özel tuş işleme
-    let dataToSend = data;
-    
-    if (keyCode === 13) {
-      // Enter tuşu için \r\n gönder (carriage return + line feed)
-      dataToSend = '\r\n';
-    } else if (keyCode === 127 || keyCode === 8) {
-      // Backspace için \x7f gönder (DEL character)
-      dataToSend = '\x7f';
-    }
-    
     try {
-      await window.api.writeSSH(terminalInstance.sshConnectionId, dataToSend);
+      await window.api.writeSSH(terminalInstance.sshConnectionId, data);
     } catch (error) {
       console.error('Failed to send data to SSH connection:', error);
-      terminalInstance.buffer.push(dataToSend);
+      terminalInstance.buffer.push(data);
     }
   }
 
@@ -516,129 +405,7 @@ export class TerminalManager {
     
     return cleaned.trim();
   }
-
-  /**
-   * Temizler terminal data'sını bracketed paste mode ve diğer escape sequence'lardan arındırır.
-   * @param {string} data - Ham terminal data.
-   * @returns {string} Temizlenmiş terminal data.
-   */
-  cleanTerminalData(data) {
-    if (!data) return '';
-    
-    let cleaned = data;
-    
-    // Bracketed paste mode kodlarını temizle
-    cleaned = cleaned.replace(/\x1b\[200~/g, '');
-    cleaned = cleaned.replace(/\x1b\[201~/g, '');
-    
-    // Bracketed paste mode enable/disable kodlarını temizle
-    cleaned = cleaned.replace(/\x1b\[\?2004[hl]/g, '');
-    
-    // ANSI renk kodlarını agresif şekilde temizle
-    cleaned = cleaned.replace(/\x1b\[\d+m/g, '');
-    cleaned = cleaned.replace(/\x1b\[\d+;\d+m/g, '');
-    cleaned = cleaned.replace(/\x1b\[\d+;\d+;\d+m/g, '');
-    
-    // Tek başına duran renk kodlarını temizle (31m, 0m gibi)
-    cleaned = cleaned.replace(/\b\d+m\b/g, '');
-    cleaned = cleaned.replace(/\s\d+m\s/g, ' ');
-    cleaned = cleaned.replace(/\s\d+m$/g, '');
-    cleaned = cleaned.replace(/^\d+m\s/g, '');
-    
-    // Tüm sayısal kodları agresif bir şekilde temizle
-    cleaned = cleaned.replace(/\d+[hlm~]/g, '');
-    
-    // Prompt sonrası garip kodları temizle (root@root:~# 2004l gibi)
-    cleaned = cleaned.replace(/([@#$]\s*)\d+[hlm~]+/g, '$1');
-    
-    // Komut satırı başında görünen kodları temizle
-    cleaned = cleaned.replace(/^(\s*)\d+[hlm~]+/gm, '$1');
-    
-    // Satır ortasında görünen kodları temizle
-    cleaned = cleaned.replace(/(\w)\d+[hlm~]+(\w)/g, '$1$2');
-    cleaned = cleaned.replace(/(\s)\d+[hlm~]+(\s)/g, '$1$2');
-    
-    // "command not found" mesajlarındaki garip kodları temizle
-    cleaned = cleaned.replace(/[\d~hlm]+:\s*command\s+[\d~hlm]*not\s+found/g, ': command not found');
-    cleaned = cleaned.replace(/:\s*command\s+\d+m?not\s+found/g, ': command not found');
-    
-    // Tek başına duran sayısal kodları temizle
-    cleaned = cleaned.replace(/\b\d+[hlm~]+\b/g, '');
-    
-    // Birden fazla sayısal kod bir arada olanları temizle (2004l~1000l gibi)
-    cleaned = cleaned.replace(/(\d+[hlm~])+/g, '');
-    
-    // ANSI escape sequence'larını temizle
-    cleaned = cleaned.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-    
-    // Diğer xterm kontrol kodlarını temizle
-    cleaned = cleaned.replace(/\x1b\]633;[A-Z]\x07/g, '');
-    cleaned = cleaned.replace(/\x1b\]633;P;[^\x07]*\x07/g, '');
-    
-    // Tilde (~) karakterlerini temizle (200~ gibi)
-    cleaned = cleaned.replace(/\d+~/g, '');
-    
-    // Son temizlik: ardışık boşlukları tek boşluğa çevir
-    cleaned = cleaned.replace(/\s+/g, ' ');
-    
-    return cleaned;
-  }
   
-  /**
-   * Ultra agresif terminal data temizleme - tüm ANSI kodlarını ve garip karakterleri temizler
-   * @param {string} data - Ham terminal data.
-   * @returns {string} Ultra agresif şekilde temizlenmiş terminal data.
-   */
-  cleanTerminalDataAggressive(data) {
-    if (!data) return '';
-    
-    let cleaned = data;
-    
-    // İlk olarak tüm ANSI escape sequence'larını temizle
-    cleaned = cleaned.replace(/\x1b\[[0-9;]*[a-zA-Z]/g, '');
-    cleaned = cleaned.replace(/\x1b\][^\x07]*\x07/g, '');
-    cleaned = cleaned.replace(/\x1b\[[?]?[0-9;]*[hlm]/g, '');
-    cleaned = cleaned.replace(/\x1b\([AB]/g, '');
-    cleaned = cleaned.replace(/\x1b[=>]/g, '');
-    
-    // Bracketed paste mode kodlarını temizle
-    cleaned = cleaned.replace(/\x1b\[200~/g, '');
-    cleaned = cleaned.replace(/\x1b\[201~/g, '');
-    cleaned = cleaned.replace(/\x1b\[\?2004[hl]/g, '');
-    
-    // ULTRA AGRESİF: Tüm sayı+harf kombinasyonlarını temizle
-    // 31m, 2004l, 1000l, 1002l, 1003l, 1006l gibi tüm kodları temizle
-    cleaned = cleaned.replace(/\d+[a-zA-Z]/g, '');
-    
-    // Özel durumlar için ekstra temizlik
-    cleaned = cleaned.replace(/\b\d+m\b/g, ''); // 31m gibi tek başına duran kodlar
-    cleaned = cleaned.replace(/\s\d+m\s/g, ' '); // Boşluklar arasındaki kodlar
-    cleaned = cleaned.replace(/\s\d+m$/g, ''); // Satır sonundaki kodlar
-    cleaned = cleaned.replace(/^\d+m\s/g, ''); // Satır başındaki kodlar
-    
-    // Prompt sonrası garip kodları temizle
-    cleaned = cleaned.replace(/([@#$]\s*)\d+[a-zA-Z]+/g, '$1');
-    
-    // "command not found" mesajlarını düzelt
-    cleaned = cleaned.replace(/:\s*command\s+not\s+found/g, ': command not found');
-    cleaned = cleaned.replace(/command\s+not\s+found/g, 'command not found');
-    
-    // Satır ortasında kalan kodları temizle
-    cleaned = cleaned.replace(/(\w)\d+[a-zA-Z]+(\w)/g, '$1$2');
-    cleaned = cleaned.replace(/(\s)\d+[a-zA-Z]+(\s)/g, '$1$2');
-    
-    // Komut satırı başında görünen kodları temizle
-    cleaned = cleaned.replace(/^(\s*)\d+[a-zA-Z]+/gm, '$1');
-    
-    // Son temizlik - ardışık boşlukları tek boşluğa çevir
-    cleaned = cleaned.replace(/\s+/g, ' ');
-    
-    // Boş satırları temizle
-    cleaned = cleaned.replace(/^\s*$/gm, '');
-    
-    return cleaned;
-  }
-
   /**
    * Writes data received from the SSH connection to the corresponding terminal.
    * @param {string} connectionId - The SSH connection ID.
@@ -650,42 +417,8 @@ export class TerminalManager {
     const terminalInstance = this.terminals[terminalId];
     if (!terminalInstance) return;
     
-    // Clean bracketed paste mode and other escape sequences aggressively
-    let cleanedData = this.cleanTerminalDataAggressive(data);
-    const enhancedData = this.enhanceTerminalOutput(cleanedData);
-    terminalInstance.terminal.write(enhancedData);
-  }
-
-  /**
-   * Writes data received from the local terminal to the corresponding terminal.
-   * @param {string} localTerminalId - The local terminal ID.
-   * @param {string} data - The data from the local terminal.
-   */
-  handleLocalTerminalData(localTerminalId, data) {
-    const terminalId = this.localTerminals[localTerminalId];
-    if (!terminalId) return;
-    const terminalInstance = this.terminals[terminalId];
-    if (!terminalInstance) return;
-    
-    // Apply highlighting to local terminal output too
     const enhancedData = this.enhanceTerminalOutput(data);
     terminalInstance.terminal.write(enhancedData);
-  }
-
-  /**
-   * Handles local terminal exit events.
-   * @param {string} localTerminalId - The local terminal ID.
-   * @param {number} exitCode - The exit code.
-   */
-  handleLocalTerminalExit(localTerminalId, exitCode) {
-    const terminalId = this.localTerminals[localTerminalId];
-    if (!terminalId) return;
-    const terminalInstance = this.terminals[terminalId];
-    if (!terminalInstance) return;
-    
-    terminalInstance.terminal.writeln(`\r\nLocal terminal exited with code: ${exitCode}`);
-    terminalInstance.localTerminalId = null;
-    delete this.localTerminals[localTerminalId];
   }
 
   /**
@@ -703,10 +436,9 @@ export class TerminalManager {
       processed = this.enhancePromptSimple(processed);
     }
     
-    // 2. Temel komut ve output renklendirme
+    // 2. Temel komut renklendirme
     if (this.enhancementSettings.enableOutputHighlighting) {
       processed = this.enhanceOutputSimple(processed);
-      processed = this.enhanceLocalTerminalOutput(processed);
     }
     
     return processed;
@@ -758,44 +490,6 @@ export class TerminalManager {
     // Başarı mesajları
     result = result.replace(/\b(success|completed|done|ok|successful|running|active)\b/gi, 
       '\x1b[32m$1\x1b[0m'); // Yeşil başarı
-    
-    return result;
-  }
-
-  /**
-   * Lokal terminal için özel highlighting
-   */
-  enhanceLocalTerminalOutput(data) {
-    let result = data;
-    
-    // Dosya ve klasör renklerini ekle
-    result = result.replace(/\b([a-zA-Z0-9_\-\.]+\.(js|ts|jsx|tsx|html|css|scss|json|md|txt|log|xml|yaml|yml))\b/g, 
-      '\x1b[36m$1\x1b[0m'); // Cyan dosya uzantıları
-    
-    // Klasör isimlerini renklendir (büyük harfle başlayanlar genellikle klasör)
-    result = result.replace(/\b([A-Z][a-zA-Z0-9_\-]*)\b/g, 
-      '\x1b[34m$1\x1b[0m'); // Mavi klasörler
-    
-    // Sayıları renklendir
-    result = result.replace(/\b(\d+)\b/g, 
-      '\x1b[33m$1\x1b[0m'); // Sarı sayılar
-    
-    // Yol (path) renklerini ekle
-    result = result.replace(/([\/~])([a-zA-Z0-9_\-\.\/]+)/g, 
-      '\x1b[32m$1$2\x1b[0m'); // Yeşil yollar
-    
-    // Gizli dosyaları renklendir (. ile başlayanlar)
-    result = result.replace(/\b(\.[a-zA-Z0-9_\-\.]+)\b/g, 
-      '\x1b[90m$1\x1b[0m'); // Gri gizli dosyalar
-    
-    // Executable dosyaları renklendir (uzantısız)
-    result = result.replace(/\b([a-zA-Z0-9_\-]+)(\s|$)/g, (match, file, ending) => {
-      // Eğer dosya uzantısı yoksa ve executable gibi görünüyorsa
-      if (!file.includes('.') && file.length > 2) {
-        return '\x1b[92m' + file + '\x1b[0m' + ending; // Açık yeşil
-      }
-      return match;
-    });
     
     return result;
   }
@@ -1366,7 +1060,7 @@ export class TerminalManager {
   }
   
   /**
-   * Closes a terminal instance and terminates its SSH connection or local terminal.
+   * Closes a terminal instance and terminates its SSH connection.
    * @param {string} id - The ID of the terminal to close.
    */
   async closeTerminal(id) {
@@ -1377,8 +1071,6 @@ export class TerminalManager {
         delete this.reconnectTimers[id];
       }
       delete this.reconnectAttempts[id];
-      
-      // Close SSH connection
       if (terminalInstance.sshConnectionId) {
         try {
           await window.api.disconnectSSH(terminalInstance.sshConnectionId);
@@ -1387,17 +1079,6 @@ export class TerminalManager {
           console.error('Failed to close SSH connection:', error);
         }
       }
-      
-      // Close local terminal
-      if (terminalInstance.localTerminalId) {
-        try {
-          await window.api.killLocalTerminal(terminalInstance.localTerminalId);
-          delete this.localTerminals[terminalInstance.localTerminalId];
-        } catch (error) {
-          console.error('Failed to close local terminal:', error);
-        }
-      }
-      
       terminalInstance.terminal.dispose();
       delete this.terminals[id];
       
@@ -1423,7 +1104,7 @@ export class TerminalManager {
   }
   
   /**
-   * Fits the terminal to its container and notifies the SSH connection or local terminal of the new dimensions.
+   * Fits the terminal to its container and notifies the SSH connection of the new dimensions.
    * @param {string} id - The terminal ID.
    */
   fitTerminal(id) {
@@ -1431,12 +1112,10 @@ export class TerminalManager {
     if (terminalInstance && terminalInstance.fitAddon) {
       try {
         terminalInstance.fitAddon.fit();
-        const dimensions = this.getTerminalDimensions(id);
-        if (dimensions) {
-          if (terminalInstance.sshConnectionId) {
+        if (terminalInstance.sshConnectionId) {
+          const dimensions = this.getTerminalDimensions(id);
+          if (dimensions) {
             window.api.resizeSSH(terminalInstance.sshConnectionId, dimensions.cols, dimensions.rows);
-          } else if (terminalInstance.localTerminalId) {
-            window.api.resizeLocalTerminal(terminalInstance.localTerminalId, dimensions.cols, dimensions.rows);
           }
         }
       } catch (error) {
@@ -1470,8 +1149,6 @@ export class TerminalManager {
   async reloadTerminal(id) {
     const terminalInstance = this.terminals[id];
     if (!terminalInstance) return;
-    
-    // Handle SSH terminal reload
     if (terminalInstance.sshConnectionId) {
       try {
         await window.api.disconnectSSH(terminalInstance.sshConnectionId);
@@ -1481,25 +1158,7 @@ export class TerminalManager {
         console.error('Failed to close SSH connection:', error);
       }
     }
-    
-    // Handle local terminal reload
-    if (terminalInstance.localTerminalId) {
-      try {
-        await window.api.killLocalTerminal(terminalInstance.localTerminalId);
-        delete this.localTerminals[terminalInstance.localTerminalId];
-        terminalInstance.localTerminalId = null;
-      } catch (error) {
-        console.error('Failed to close local terminal:', error);
-      }
-    }
-    
     terminalInstance.terminal.clear();
-    
-    // Restart connection based on type
-    if (terminalInstance.isLocal) {
-      await this.initLocalTerminal(id);
-    } else {
-      await this.initSSHConnection(id);
-    }
+    await this.initSSHConnection(id);
   }
 } 
