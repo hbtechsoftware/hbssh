@@ -36,13 +36,11 @@
     "directories": {
       "output": "dist"
     },
-    "icon": "ssh-logo.icns",
     "win": {
       "target": [
         "nsis",
         "portable"
-      ],
-      "icon": "ssh-logo.png"
+      ]
     },
     "mac": {
       "target": [
@@ -50,8 +48,7 @@
         "zip"
       ],
       "category": "public.app-category.developer-tools",
-      "identity": null,
-      "icon": "ssh-logo.icns"
+      "identity": null
     }
   }
 }
