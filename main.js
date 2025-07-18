@@ -524,7 +524,7 @@ function createWindow() {
       enableRemoteModule: false,
       preload: path.join(__dirname, 'src/preload/preload.js')
     },
-    icon: path.join(__dirname, 'resources/icon.png')
+    icon: path.join(__dirname, 'ssh-logo.png')
   });
 
   // Load the index.html of the app
