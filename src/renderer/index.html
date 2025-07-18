@@ -16,10 +16,12 @@
     <div class="sidebar">
       <div class="sidebar-header">
         <div class="app-title-section">
+          <img src="../../ssh-logo.png" alt="HBSSH Logo" class="app-logo">
           <h2>HBSSH</h2>
           <button id="themeSettingsBtn" class="btn btn-icon" title="Tema ve Özelleştirme">🎨</button>
         </div>
         <button id="newConnectionBtn" class="btn btn-primary">New Connection</button>
+        <button id="newLocalTerminalBtn" class="btn btn-secondary">Local Terminal</button>
       </div>
       <div class="connections-list" id="connectionsList">
         <!-- Connections will be loaded here dynamically -->
@@ -45,7 +47,10 @@
       <div class="content-area-wrapper">
         <div class="terminal-container" id="terminalContainer">
           <div class="welcome-screen" id="welcomeScreen">
-            <h1>Welcome to HBSSH</h1>
+            <div class="welcome-logo-section">
+              <img src="../../ssh-logo.png" alt="HBSSH Logo" class="welcome-logo">
+              <h1>Welcome to HBSSH</h1>
+            </div>
             <p>Select a saved connection or create a new one to get started.</p>
           </div>
           <!-- Terminal instances will be created here -->
@@ -141,7 +146,10 @@
         <span class="close-modal" id="closeAboutModal">&times;</span>
       </div>
       <div class="modal-body">
-        <h3>HBSSH - Version 0.1.0</h3>
+        <div class="about-logo-section">
+          <img src="../../ssh-logo.png" alt="HBSSH Logo" class="about-logo">
+          <h3>HBSSH - Version 0.1.0</h3>
+        </div>
         <p>A modern, cross-platform SSH client for Windows and macOS.</p>
         <p>Created by HBTech</p>
       </div>

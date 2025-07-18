@@ -339,6 +339,57 @@ contextBridge.exposeInMainWorld('api', {
   },
 
   /**
+   * Spawns a local terminal process.
+   * @param {Object} options - Terminal options (shell, cwd, env, etc.).
+   * @returns {Promise<Object>} A Promise that resolves with the terminal process result.
+   */
+  spawnLocalTerminal: (options) => ipcRenderer.invoke('spawn-local-terminal', options),
+
+  /**
+   * Writes data to a local terminal process.
+   * @param {string} terminalId - The ID of the terminal process.
+   * @param {string} data - The data to write.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the write operation.
+   */
+  writeLocalTerminal: (terminalId, data) => ipcRenderer.invoke('write-local-terminal', terminalId, data),
+
+  /**
+   * Resizes a local terminal process.
+   * @param {string} terminalId - The ID of the terminal process.
+   * @param {number} cols - The number of columns.
+   * @param {number} rows - The number of rows.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the resize operation.
+   */
+  resizeLocalTerminal: (terminalId, cols, rows) => ipcRenderer.invoke('resize-local-terminal', terminalId, cols, rows),
+
+  /**
+   * Kills a local terminal process.
+   * @param {string} terminalId - The ID of the terminal process to kill.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the kill operation.
+   */
+  killLocalTerminal: (terminalId) => ipcRenderer.invoke('kill-local-terminal', terminalId),
+
+  /**
+   * Listens for local terminal data.
+   * @param {function(terminalId: string, data: string): void} callback - Called when local terminal data is received.
+   * @returns {function(): void} A function to remove the event listener.
+   */
+  onLocalTerminalData: (callback) => {
+    ipcRenderer.on('local-terminal-data', (event, terminalId, data) => callback(terminalId, data));
+    return () => ipcRenderer.removeListener('local-terminal-data', callback);
+  },
+
+  /**
+   * Listens for local terminal exit events.
+   * @param {function(terminalId: string, exitCode: number): void} callback - Called when local terminal exits.
+   * @returns {function(): void} A function to remove the event listener.
+   */
+  onLocalTerminalExit: (callback) => {
+    ipcRenderer.on('local-terminal-exit', (event, terminalId, exitCode) => callback(terminalId, exitCode));
+    return () => ipcRenderer.removeListener('local-terminal-exit', callback);
+  },
+
+  /**
    * Reads a remote file on the specified SFTP connection.
    * @param {string} sftpConnectionId - The ID of the SFTP connection.
    * @param {string} remotePath - The path of the remote file to read.

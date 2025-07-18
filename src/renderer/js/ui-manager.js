@@ -18,6 +18,7 @@ export class UIManager {
     // DOM elements
     this.connectionsList = document.getElementById('connectionsList');
     this.newConnectionBtn = document.getElementById('newConnectionBtn');
+    this.newLocalTerminalBtn = document.getElementById('newLocalTerminalBtn');
     this.newTabBtn = document.getElementById('newTabBtn');
     this.connectionModal = document.getElementById('connectionModal');
     this.connectionForm = document.getElementById('connectionForm');
@@ -45,6 +46,7 @@ export class UIManager {
   init() {
     // Set up button event listeners
     this.newConnectionBtn.addEventListener('click', () => this.showConnectionModal());
+    this.newLocalTerminalBtn.addEventListener('click', () => this.createLocalTerminal());
     this.newTabBtn.addEventListener('click', () => this.tabManager.createNewTab());
     this.closeModal.addEventListener('click', () => this.hideConnectionModal());
     this.cancelBtn.addEventListener('click', () => this.hideConnectionModal());
@@ -126,6 +128,21 @@ export class UIManager {
    */
   hideAboutModal() {
     this.aboutModal.classList.remove('show');
+  }
+
+  /**
+   * Creates a new local terminal tab
+   */
+  createLocalTerminal() {
+    const localConnection = {
+      type: 'local',
+      name: 'Local Terminal',
+      host: 'localhost',
+      username: 'user'
+    };
+    
+    const tabId = this.tabManager.createNewTab('Local Terminal', localConnection);
+    this.tabManager.activateTab(tabId);
   }
   
   /**
