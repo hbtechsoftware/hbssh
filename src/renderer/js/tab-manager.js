@@ -189,6 +189,60 @@ export class TabManager {
   }
 
   /**
+   * Creates a new local terminal tab.
+   * @returns {string} The ID of the newly created local terminal tab.
+   */
+  createNewLocalTab() {
+    const tabId = `local-tab-${Date.now()}-${this.tabCounter++}`;
+    
+    const tabElement = document.createElement('div');
+    tabElement.className = 'tab';
+    tabElement.dataset.tabId = tabId;
+    
+    const tabLabel = document.createElement('span');
+    tabLabel.className = 'tab-label';
+    tabLabel.textContent = 'Local Terminal';
+    
+    const tabClose = document.createElement('span');
+    tabClose.className = 'tab-close';
+    tabClose.textContent = '×';
+    tabClose.addEventListener('click', (e) => {
+      e.stopPropagation();
+      this.closeTab(tabId);
+    });
+    
+    tabElement.appendChild(tabLabel);
+    tabElement.appendChild(tabClose);
+    
+    tabElement.addEventListener('click', () => {
+      this.activateTab(tabId);
+    });
+    
+    this.tabsContainer.appendChild(tabElement);
+    
+    this.tabs.push({
+      id: tabId,
+      name: 'Local Terminal',
+      element: tabElement,
+      isLocal: true
+    });
+    
+    const terminalElement = document.createElement('div');
+    terminalElement.className = 'terminal-instance';
+    terminalElement.id = `terminal-${tabId}`;
+    this.terminalContainer.appendChild(terminalElement);
+    
+    this.activateTab(tabId);
+    
+    // Create local terminal
+    setTimeout(() => {
+      this.terminalManager.createLocalTerminal(tabId);
+    }, 0);
+    
+    return tabId;
+  }
+
+  /**
    * Creates a custom tab with optional content.
    * @param {string} name - The name for the tab.
    * @param {HTMLElement} content - The HTML content element to add to the tab.

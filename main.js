@@ -4,6 +4,8 @@ const Store = require('electron-store');
 const SSHClient = require('./src/common/ssh-client');
 const SFTPClient = require('./src/common/sftp-client');
 const os = require('os');
+const { spawn } = require('child_process');
+const pty = require('node-pty');
 
 const store = new Store();
 
@@ -12,6 +14,9 @@ let mainWindow;
 const activeStatIntervals = new Map();
 const connectionOsTypes = new Map(); // Stores OS type for each connectionId
 const STAT_INTERVAL_MS = 3000;
+
+// Local terminal management
+const localTerminals = new Map(); // Stores local terminal processes
 
 /**
  * Parses RAM usage from the output of the Linux 'free -m' command.
@@ -1278,4 +1283,118 @@ ipcMain.handle('sftp-write-file', async (event, { connectionId, remoteFilePath, 
     console.error(`[${sshConnectionId || connectionId}] Error writing remote file ${remoteFilePath}:`, error);
     return { success: false, error: error.message };
   }
-}); 
+});
+
+/**
+ * IPC Handler: Creates a new local terminal session.
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+ * @returns {Promise<{success: boolean, terminalId?: string, error?: string}>} Result object with terminal ID on success.
+ */
+ipcMain.handle('create-local-terminal', async (event) => {
+  try {
+    const terminalId = `local_${Date.now()}`;
+    
+    // Determine shell based on platform
+    let shell;
+    if (process.platform === 'win32') {
+      shell = process.env.COMSPEC || 'cmd.exe';
+    } else {
+      shell = process.env.SHELL || '/bin/bash';
+    }
+    
+    // Create PTY process
+    const ptyProcess = pty.spawn(shell, [], {
+      name: 'xterm-color',
+      cols: 80,
+      rows: 24,
+      cwd: os.homedir(),
+      env: process.env
+    });
+    
+    // Store the process
+    localTerminals.set(terminalId, ptyProcess);
+    
+    // Handle process data
+    ptyProcess.onData((data) => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('local-terminal-data', terminalId, data);
+      }
+    });
+    
+    // Handle process exit
+    ptyProcess.onExit(({ exitCode, signal }) => {
+      localTerminals.delete(terminalId);
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('local-terminal-exit', terminalId, exitCode || 0);
+      }
+    });
+    
+    return { success: true, terminalId };
+  } catch (error) {
+    console.error('Error creating local terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC Handler: Writes data to a local terminal.
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+ * @param {string} terminalId - The ID of the local terminal.
+ * @param {string} data - The data to write to the terminal.
+ * @returns {{success: boolean, error?: string}} Result object.
+ */
+ipcMain.handle('write-local-terminal', (event, terminalId, data) => {
+  try {
+    const terminal = localTerminals.get(terminalId);
+    if (!terminal) {
+      return { success: false, error: 'Terminal not found' };
+    }
+    
+    terminal.write(data);
+    return { success: true };
+  } catch (error) {
+    console.error('Error writing to local terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC Handler: Resizes a local terminal.
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+ * @param {string} terminalId - The ID of the local terminal.
+ * @param {number} cols - Number of columns.
+ * @param {number} rows - Number of rows.
+ * @returns {{success: boolean}} Result object.
+ */
+ipcMain.handle('resize-local-terminal', (event, terminalId, cols, rows) => {
+  try {
+    const terminal = localTerminals.get(terminalId);
+    if (terminal) {
+      terminal.resize(cols, rows);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error resizing local terminal:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+/**
+ * IPC Handler: Closes a local terminal.
+ * @param {Electron.IpcMainInvokeEvent} event - The IPC event.
+ * @param {string} terminalId - The ID of the local terminal to close.
+ * @returns {{success: boolean}} Result object.
+ */
+ipcMain.handle('close-local-terminal', (event, terminalId) => {
+  try {
+    const terminal = localTerminals.get(terminalId);
+    if (terminal) {
+      terminal.kill();
+      localTerminals.delete(terminalId);
+    }
+    return { success: true };
+  } catch (error) {
+    console.error('Error closing local terminal:', error);
+    return { success: true }; // Return success even if there's an error
+  }
+});

@@ -223,6 +223,16 @@ body {
   background-color: #106ebe;
 }
 
+.btn-secondary {
+  background-color: var(--secondary-color);
+  border-color: var(--border-color);
+  color: var(--text-color);
+}
+
+.btn-secondary:hover {
+  background-color: #4a4a4a;
+}
+
 .btn-danger {
   background-color: var(--danger-color);
   border-color: var(--danger-color);

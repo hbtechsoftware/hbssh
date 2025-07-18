@@ -354,5 +354,66 @@ contextBridge.exposeInMainWorld('api', {
    * @param {string} [sshConnectionId] - The ID of the associated SSH connection (this parameter is received by the `sftp-write-file` handler in the current main.js).
    * @returns {Promise<Object>} A Promise that resolves with the result of the write operation.
    */
-  sftpWriteFile: (sftpConnectionId, remotePath, content, sshConnectionId) => ipcRenderer.invoke('sftp-write-file', { connectionId: sftpConnectionId, remoteFilePath: remotePath, content, sshConnectionId })
+  sftpWriteFile: (sftpConnectionId, remotePath, content, sshConnectionId) => ipcRenderer.invoke('sftp-write-file', { connectionId: sftpConnectionId, remoteFilePath: remotePath, content, sshConnectionId }),
+
+  // Local Terminal APIs
+  /**
+   * Creates a new local terminal session.
+   * @returns {Promise<Object>} A Promise that resolves with the terminal creation result.
+   */
+  createLocalTerminal: () => ipcRenderer.invoke('create-local-terminal'),
+
+  /**
+   * Writes data to a local terminal.
+   * @param {string} terminalId - The ID of the local terminal.
+   * @param {string} data - The data to write to the terminal.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the write operation.
+   */
+  writeLocalTerminal: (terminalId, data) => ipcRenderer.invoke('write-local-terminal', terminalId, data),
+
+  /**
+   * Resizes a local terminal.
+   * @param {string} terminalId - The ID of the local terminal to resize.
+   * @param {number} cols - Number of columns.
+   * @param {number} rows - Number of rows.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the resize operation.
+   */
+  resizeLocalTerminal: (terminalId, cols, rows) => ipcRenderer.invoke('resize-local-terminal', terminalId, cols, rows),
+
+  /**
+   * Closes a local terminal.
+   * @param {string} terminalId - The ID of the local terminal to close.
+   * @returns {Promise<Object>} A Promise that resolves with the result of the close operation.
+   */
+  closeLocalTerminal: (terminalId) => ipcRenderer.invoke('close-local-terminal', terminalId),
+
+  /**
+   * Listens for local terminal data.
+   * @param {function(terminalId: string, data: string): void} callback - Called when local terminal data is received.
+   * @returns {function(): void} A function to remove the event listener.
+   */
+  onLocalTerminalData: (callback) => {
+    ipcRenderer.on('local-terminal-data', (event, terminalId, data) => callback(terminalId, data));
+    return () => ipcRenderer.removeListener('local-terminal-data', callback);
+  },
+
+  /**
+   * Listens for local terminal exit events.
+   * @param {function(terminalId: string, code: number): void} callback - Called when a local terminal exits.
+   * @returns {function(): void} A function to remove the event listener.
+   */
+  onLocalTerminalExit: (callback) => {
+    ipcRenderer.on('local-terminal-exit', (event, terminalId, code) => callback(terminalId, code));
+    return () => ipcRenderer.removeListener('local-terminal-exit', callback);
+  },
+
+  /**
+   * Listens for local terminal error events.
+   * @param {function(terminalId: string, error: string): void} callback - Called when a local terminal error occurs.
+   * @returns {function(): void} A function to remove the event listener.
+   */
+  onLocalTerminalError: (callback) => {
+    ipcRenderer.on('local-terminal-error', (event, terminalId, error) => callback(terminalId, error));
+    return () => ipcRenderer.removeListener('local-terminal-error', callback);
+  }
 }); 

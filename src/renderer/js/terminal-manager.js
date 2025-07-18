@@ -68,6 +68,9 @@ export class TerminalManager {
     window.api.onSSHData(this.handleSSHData);
     window.api.onSSHClose(this.handleSSHClose);
     window.api.onSSHError(this.handleSSHError);
+    window.api.onLocalTerminalData(this.handleLocalTerminalData.bind(this));
+    window.api.onLocalTerminalExit(this.handleLocalTerminalExit.bind(this));
+    window.api.onLocalTerminalError(this.handleLocalTerminalError.bind(this));
     document.addEventListener('keydown', this.handleKeyboardEvent);
   }
   
@@ -125,11 +128,16 @@ export class TerminalManager {
   async pasteText() {
     if (!this.activeTerminalId) return;
     const terminalInstance = this.terminals[this.activeTerminalId];
-    if (!terminalInstance || !terminalInstance.sshConnectionId) return;
+    if (!terminalInstance) return;
+    
     try {
       const text = await window.api.readClipboard();
       if (text) {
-        await window.api.writeSSH(terminalInstance.sshConnectionId, text);
+        if (terminalInstance.isLocal && terminalInstance.localTerminalId) {
+          await window.api.writeLocalTerminal(terminalInstance.localTerminalId, text);
+        } else if (terminalInstance.sshConnectionId) {
+          await window.api.writeSSH(terminalInstance.sshConnectionId, text);
+        }
       }
     } catch (error) {
       console.error('Failed to paste from clipboard:', error);
@@ -1071,6 +1079,8 @@ export class TerminalManager {
         delete this.reconnectTimers[id];
       }
       delete this.reconnectAttempts[id];
+      
+      // Close SSH connection if exists
       if (terminalInstance.sshConnectionId) {
         try {
           await window.api.disconnectSSH(terminalInstance.sshConnectionId);
@@ -1079,6 +1089,16 @@ export class TerminalManager {
           console.error('Failed to close SSH connection:', error);
         }
       }
+      
+      // Close local terminal if exists
+      if (terminalInstance.localTerminalId) {
+        try {
+          await window.api.closeLocalTerminal(terminalInstance.localTerminalId);
+        } catch (error) {
+          console.error('Failed to close local terminal:', error);
+        }
+      }
+      
       terminalInstance.terminal.dispose();
       delete this.terminals[id];
       
@@ -1112,10 +1132,12 @@ export class TerminalManager {
     if (terminalInstance && terminalInstance.fitAddon) {
       try {
         terminalInstance.fitAddon.fit();
-        if (terminalInstance.sshConnectionId) {
-          const dimensions = this.getTerminalDimensions(id);
-          if (dimensions) {
+        const dimensions = this.getTerminalDimensions(id);
+        if (dimensions) {
+          if (terminalInstance.sshConnectionId) {
             window.api.resizeSSH(terminalInstance.sshConnectionId, dimensions.cols, dimensions.rows);
+          } else if (terminalInstance.localTerminalId) {
+            window.api.resizeLocalTerminal(terminalInstance.localTerminalId, dimensions.cols, dimensions.rows);
           }
         }
       } catch (error) {
@@ -1161,4 +1183,166 @@ export class TerminalManager {
     terminalInstance.terminal.clear();
     await this.initSSHConnection(id);
   }
-} 
+
+  /**
+   * Creates a new local terminal instance.
+   * @param {string} tabId - The ID of the tab to which the terminal belongs.
+   * @returns {Promise<Object|null>} The terminal instance, or null in case of an error.
+   */
+  async createLocalTerminal(tabId) {
+    const id = tabId || `local-tab-${Date.now()}-${Object.keys(this.terminals).length}`;
+    const terminalElement = document.getElementById(`terminal-${id}`);
+    if (!terminalElement) {
+      console.error(`Terminal element not found: terminal-${id}`);
+      return null;
+    }
+
+    // Tema ayarlarını al
+    const themeConfig = window.themeManager ? window.themeManager.themeConfigs[window.themeManager.currentTheme] : null;
+    const settings = window.themeManager ? window.themeManager.settings : {};
+    
+    const terminal = new window.Terminal({
+      cursorBlink: true,
+      fontFamily: 'Menlo, Monaco, "Courier New", monospace',
+      fontSize: settings.fontSize || 14,
+      cursorStyle: settings.cursorStyle || 'block',
+      theme: themeConfig ? themeConfig.terminal : {
+        background: '#1e1e1e',
+        foreground: '#e1e1e1',
+        cursor: '#ffffff',
+        selection: 'rgba(255, 255, 255, 0.3)',
+        black: '#000000',
+        red: '#e06c75',
+        green: '#98c379',
+        yellow: '#e5c07b',
+        blue: '#61afef',
+        magenta: '#c678dd',
+        cyan: '#56b6c2',
+        white: '#abb2bf'
+      },
+      scrollback: 5000,
+      allowTransparency: true
+    });
+
+    const fitAddon = new window.FitAddon.FitAddon();
+    terminal.loadAddon(fitAddon);
+    terminal.open(terminalElement);
+
+    // Terminal element'ine tema sınıfını ekle
+    if (window.themeManager) {
+      terminalElement.classList.add(window.themeManager.currentTheme + '-theme');
+      terminalElement.style.opacity = window.themeManager.settings.terminalOpacity || 0.9;
+      terminalElement.classList.add('terminal-instance');
+    }
+
+    this.terminals[id] = {
+      terminal,
+      fitAddon,
+      connection: { type: 'local', name: 'Local Terminal' },
+      localTerminalId: null,
+      isLocal: true,
+      buffer: []
+    };
+
+    this.commandHistory[id] = [];
+    this.historyPosition[id] = -1;
+    this.currentCommand[id] = '';
+    this.currentLine[id] = '';
+
+    // Local terminal input handler
+    terminal.onData((data) => {
+      this.handleLocalTerminalInput(id, data);
+    });
+
+    await this.initLocalTerminal(id);
+    this.setActiveTerminal(id);
+    
+    setTimeout(() => {
+      this.fitTerminal(id);
+    }, 0);
+
+    return this.terminals[id];
+  }
+
+  /**
+   * Initializes a local terminal connection.
+   * @param {string} id - The terminal ID.
+   */
+  async initLocalTerminal(id) {
+    const terminalInstance = this.terminals[id];
+    if (!terminalInstance) return;
+
+    const { terminal } = terminalInstance;
+    terminal.writeln('Starting local terminal...');
+
+    try {
+      const result = await window.api.createLocalTerminal();
+      if (result.success) {
+        terminalInstance.localTerminalId = result.terminalId;
+        terminal.writeln('Local terminal ready.');
+        this.fitTerminal(id);
+      } else {
+        terminal.writeln(`Failed to create local terminal: ${result.error}`);
+      }
+    } catch (error) {
+      terminal.writeln(`Local terminal error: ${error.message}`);
+    }
+  }
+
+  /**
+   * Handles user input from the local terminal.
+   * @param {string} id - The terminal ID.
+   * @param {string} data - The data from the user.
+   */
+  async handleLocalTerminalInput(id, data) {
+    const terminalInstance = this.terminals[id];
+    if (!terminalInstance || !terminalInstance.localTerminalId) return;
+
+    try {
+      await window.api.writeLocalTerminal(terminalInstance.localTerminalId, data);
+    } catch (error) {
+      console.error('Failed to send data to local terminal:', error);
+    }
+  }
+
+  /**
+   * Handles data received from local terminal.
+   * @param {string} terminalId - The local terminal ID.
+   * @param {string} data - The data from the local terminal.
+   */
+  handleLocalTerminalData(terminalId, data) {
+    // Find terminal by localTerminalId
+    const terminalInstance = Object.values(this.terminals).find(t => t.localTerminalId === terminalId);
+    if (!terminalInstance) return;
+    
+    terminalInstance.terminal.write(data);
+  }
+
+  /**
+   * Handles local terminal exit events.
+   * @param {string} terminalId - The local terminal ID.
+   * @param {number} code - The exit code.
+   */
+  handleLocalTerminalExit(terminalId, code) {
+    // Find terminal by localTerminalId
+    const terminalInstance = Object.values(this.terminals).find(t => t.localTerminalId === terminalId);
+    if (!terminalInstance) return;
+    
+    terminalInstance.terminal.writeln(`\r\nLocal terminal exited with code: ${code}`);
+    terminalInstance.localTerminalId = null;
+  }
+
+  /**
+   * Handles local terminal error events.
+   * @param {string} terminalId - The local terminal ID.
+   * @param {string} error - The error message.
+   */
+  handleLocalTerminalError(terminalId, error) {
+    // Find terminal by localTerminalId
+    const terminalInstance = Object.values(this.terminals).find(t => t.localTerminalId === terminalId);
+    if (!terminalInstance) return;
+    
+    terminalInstance.terminal.writeln(`\r\nLocal terminal error: ${error}`);
+    terminalInstance.localTerminalId = null;
+  }
+}
